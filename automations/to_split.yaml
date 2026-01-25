@@ -188,40 +188,8 @@
       target:
         device_id: 9243b1e92ae159a2e333ccf8988a65ed
   mode: single
-- id: '1699861922965'
-  alias: '[Bureau] Automatisation à l''allumage du PC de tanguy'
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - device_tracker.desktop_tang
-    to: home
-  condition:
-  - condition: state
-    entity_id: cover.velux_external_cover_roller_shutter_4
-    state: closed
-  action:
-  - service: light.turn_on
-    data:
-      transition: 20
-    target:
-      area_id: bureau
-  mode: single
-- id: '1699862552853'
-  alias: Auto - Bureau - Lumière - Extinction à l'ouverture du volet
-  description: ''
-  triggers:
-  - entity_id:
-    - cover.velux_external_cover_roller_shutter_4
-    to: opening
-    trigger: state
-  conditions: []
-  actions:
-  - data: {}
-    target:
-      area_id: bureau
-    action: light.turn_off
-  mode: single
+
+
 - id: '1699870051044'
   alias: '[Maison] Automatisation du planning de chauffage'
   description: 'Automatisation pour gérer le planning du chauffage, actuellement le
@@ -305,33 +273,7 @@
         - salle_a_manger
       alias: Passage au planning "Quotidien" côté netatmo
   mode: single
-- id: '1699886379768'
-  alias: Auto - Bureau - Lumières - Allumage quand le volet se ferme
-  description: ''
-  triggers:
-  - entity_id:
-    - cover.velux_external_cover_roller_shutter_4
-    to: closed
-    trigger: state
-  conditions: []
-  actions:
-  - if:
-    - condition: or
-      conditions:
-      - condition: numeric_state
-        entity_id: sensor.prise_bureau_agnes_puissance
-        above: 8
-      - condition: numeric_state
-        entity_id: sensor.prise_bureau_tanguy_puissance
-        above: 40
-    then:
-    - data:
-        transition: 30
-      target:
-        area_id: bureau
-      alias: Allumer la lumière du bureau
-      action: light.turn_on
-  mode: single
+
 - id: '1700034397962'
   alias: '[Maison] Automatisation quand tout le monde est absent'
   description: ''
@@ -1448,100 +1390,7 @@
     target:
       entity_id: switch.commutateur_porte_de_garage_commutateur
   mode: single
-- id: '1736785924780'
-  alias: 'Auto - Bureau - Prise Tanguy - Gestion de l''allumage/extinction en automatique
-    de la prise '
-  description: ''
-  triggers:
-  - trigger: time
-    at: '22:30:00'
-    id: a 22h30
-  - trigger: time
-    at: 08:00:00
-    id: a 8h
-    weekday:
-    - mon
-    - wed
-    - fri
-  - trigger: time
-    at: 09:00:00
-    id: a 9h
-    weekday:
-    - mon
-    - wed
-    - fri
-  - trigger: zone
-    entity_id: person.tanguy_baudrin
-    zone: zone.home
-    event: leave
-    id: Tanguy part
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - a 22h30
-      sequence:
-      - type: turn_off
-        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
-        entity_id: 07abe75541f0449afc31a3328b875d03
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - a 8h
-      sequence:
-      - type: turn_on
-        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
-        entity_id: 07abe75541f0449afc31a3328b875d03
-        domain: switch
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - a 9h
-        - condition: numeric_state
-          entity_id: sensor.prise_bureau_tanguy_puissance
-          below: 29.9
-      sequence:
-      - type: turn_off
-        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
-        entity_id: 07abe75541f0449afc31a3328b875d03
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - Tanguy rentre
-      sequence:
-      - type: turn_on
-        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
-        entity_id: 07abe75541f0449afc31a3328b875d03
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - Tanguy part
-      sequence:
-      - delay:
-          hours: 0
-          minutes: 15
-          seconds: 0
-      - if:
-        - condition: not
-          conditions:
-          - condition: zone
-            entity_id: person.tanguy_baudrin
-            zone: zone.home
-          alias: Tanguy n'est pas à la maison
-        then:
-        - type: turn_off
-          device_id: 4e60ef92ec84eeddcb8de70c93209c7c
-          entity_id: 07abe75541f0449afc31a3328b875d03
-          domain: switch
-        alias: Désactiver la prise si Tanguy n'est pas là
-  mode: single
+
 - id: '1736799359847'
   alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
   description: ''
@@ -1639,84 +1488,7 @@
     target:
       entity_id: input_button.bouton_porte_de_garage
   mode: single
-- id: '1737626729024'
-  alias: Auto - Bureau - Prise Bureau Agnès - Automatiser l'allumage/extinction de
-    la prise
-  description: ''
-  triggers:
-  - trigger: time
-    at: '22:30:00'
-    id: a 22h30
-  - trigger: time
-    at: 07:30:00
-    id: a 7h30
-  - trigger: time
-    at: 09:00:00
-    id: a 9h
-  - trigger: zone
-    entity_id: person.agnes
-    zone: zone.home
-    event: enter
-    id: Agnes rentre
-  - trigger: zone
-    entity_id: device_tracker.iphone_de_agnes_2
-    zone: zone.home
-    event: leave
-    id: Agnes part
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - a 22h30
-      sequence:
-      - type: turn_off
-        device_id: af36d6de8f2021e79586ac2624d5b7de
-        entity_id: c77ae3535c1ea306bb044add62ba3179
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - a 7h30
-      sequence:
-      - type: turn_on
-        device_id: af36d6de8f2021e79586ac2624d5b7de
-        entity_id: c77ae3535c1ea306bb044add62ba3179
-        domain: switch
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - a 9h
-        - condition: numeric_state
-          entity_id: sensor.prise_bureau_agnes_puissance
-          below: 29.9
-      sequence:
-      - type: turn_off
-        device_id: af36d6de8f2021e79586ac2624d5b7de
-        entity_id: c77ae3535c1ea306bb044add62ba3179
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - Agnes rentre
-      sequence:
-      - type: turn_off
-        device_id: af36d6de8f2021e79586ac2624d5b7de
-        entity_id: c77ae3535c1ea306bb044add62ba3179
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - Agnes part
-      sequence:
-      - type: turn_off
-        device_id: af36d6de8f2021e79586ac2624d5b7de
-        entity_id: c77ae3535c1ea306bb044add62ba3179
-        domain: switch
-  mode: single
+
 - id: '1737633981398'
   alias: Auto - Chambre parents - Apple TV - Mettre en route l'Apple TV lors d'un
     appui long sur l'interrupteur

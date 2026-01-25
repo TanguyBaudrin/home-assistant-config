@@ -1,0 +1,27 @@
+{
+  "name": "Home Assistant YAML Devcontainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+  },
+  "workspaceFolder": "/workspaces",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "yaml.schemas": {
+          "https://json.schemastore.org/github-workflow.json": "/*.github/workflows/*.{yml,yaml}"
+        },
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true
+      },
+      "extensions": [
+        "redhat.vscode-yaml",
+        "HomeAssistant.home-assistant-vscode-extension",
+        "jinjahtml.vscode-jinja"
+      ]
+    }
+  },
+  "features": {},
+  "remoteUser": "root"
+}

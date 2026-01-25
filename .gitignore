@@ -5,6 +5,7 @@
 blueprints
 custom_components
 deps
+themes
 esphome
 tts
 www
