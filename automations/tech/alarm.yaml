@@ -1,0 +1,95 @@
+- id: '1699818890314'
+  alias: Tech - Alarme - Gestion dynamique des modes Arlo
+  description: |
+    Cette automatisation ajuste automatiquement le mode du système Arlo (présent, nuit ou absent) selon l'heure, la position du soleil et la présence d’occupants. Déclencheurs : lever/coucher du soleil, horaires personnalisés et arrivées/départs à la maison. Actions : arme l’alarme en mode "home", "night" ou "away" selon la logique. (Migré le 2026-01-25)
+  trigger:
+    - platform: sun
+      event: sunrise
+      id: soleil_se_leve
+    - platform: time
+      at: input_datetime.heure_de_reveil_de_la_maison
+      id: heure_de_reveil
+    - platform: sun
+      event: sunset
+      id: soleil_se_couche
+    - platform: time
+      at: '22:00:00'
+      id: heure_de_coucher
+    - platform: zone
+      entity_id: person.agnes
+      zone: zone.home
+      event: enter
+      id: agnes_rentre
+    - platform: zone
+      entity_id: person.tanguy_baudrin
+      zone: zone.home
+      event: enter
+      id: tanguy_rentre
+    - platform: zone
+      entity_id: person.agnes
+      zone: zone.home
+      event: leave
+      id: agnes_quitte
+    - platform: zone
+      entity_id: person.tanguy_baudrin
+      zone: zone.home
+      event: leave
+      id: tanguy_quitte
+  condition: []
+  action:
+    - choose:
+        - alias: Mode "présent" le matin ou si quelqu’un rentre
+          conditions:
+            - condition: or
+              conditions:
+                - condition: zone
+                  entity_id: person.agnes
+                  zone: zone.home
+                - condition: zone
+                  entity_id: person.tanguy_baudrin
+                  zone: zone.home
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
+                    - condition: trigger
+                      id: soleil_se_leve
+                    - condition: time
+                      after: input_datetime.heure_de_reveil_de_la_maison
+                - condition: and
+                  conditions:
+                    - condition: trigger
+                      id: heure_de_reveil
+                    - condition: sun
+                      after: sunrise
+                - condition: trigger
+                  id:
+                    - agnes_rentre
+                    - tanguy_rentre
+          sequence:
+            - service: alarm_control_panel.alarm_arm_home
+              target:
+                device_id: 9243b1e92ae159a2e333ccf8988a65ed
+        - alias: Mode "nuit" le soir si quelqu’un est à la maison
+          conditions:
+            - condition: trigger
+              id:
+                - soleil_se_couche
+                - heure_de_coucher
+            - condition: or
+              conditions:
+                - condition: zone
+                  entity_id: person.agnes
+                  zone: zone.home
+                - condition: zone
+                  entity_id: person.tanguy_baudrin
+                  zone: zone.home
+          sequence:
+            - service: alarm_control_panel.alarm_arm_night
+              target:
+                device_id: 9243b1e92ae159a2e333ccf8988a65ed
+      default:
+        - service: alarm_control_panel.alarm_arm_away
+          target:
+            device_id: 9243b1e92ae159a2e333ccf8988a65ed
+  mode: single

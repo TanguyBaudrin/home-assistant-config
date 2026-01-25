@@ -1,9 +1,9 @@
 - id: '1699817277063'
-  alias: Global - Lumières - Activation ou désactivation centralisée des automatismes d'éclairage
+  alias: "Global - Lumières - Activation/désactivation centralisée des automatismes d'éclairage"
   description: |
-    Permet d'activer ou de désactiver d'un seul geste tous les automatismes liés à l'éclairage de la maison via le bouton général "Lumières automatiques". Déclencheur : changement d'état de l'entité input_boolean.lumieres_automatiques. Actions : active tous les automations d'éclairage si sur "on", désactive sinon. (Migré le 2026-01-25)
+    Active ou désactive tous les automatismes lumières de la maison via l’interrupteur principal. Déclencheur : changement d’état de input_boolean.lumieres_automatiques. Actions : active ou désactive les automatisations lumières selon la position du toggle. (Migré le 2026-01-25)
   trigger:
-    - id: bouton_lumieres_automatiques
+    - id: interrupteur_global_lumieres
       platform: state
       entity_id: input_boolean.lumieres_automatiques
   condition: []

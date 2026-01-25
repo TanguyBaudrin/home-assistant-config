@@ -28,3 +28,84 @@
       target:
         entity_id: alarm_control_panel.aarlo_base_arlo_maison
   mode: single
+
+- id: '1699870051044'
+  alias: "Global - Chauffage - Automatisation du planning matinal selon calendrier du jour (Télétravail, Vacances, Quotidien)"
+  description: |
+    Cette automatisation pilote chaque matin à 5h le choix du planning de chauffage Netatmo pour toute la maison en fonction des événements du calendrier : 
+    - Si un événement "Télétravail" est en cours, applique le planning Télétravail aux pièces concernés.
+    - Si un événement "Congés" est en cours, applique le planning Vacances.
+    - Sinon, applique le planning Quotidien.
+    Zones : bureau, chambre Louis, chambre Maxime, chambre des parents, entrée, salle à manger. 
+    Déclencheur : 5h00. 
+    Actions : Sélection dynamique du planning de chauffage selon la présence des événements Télétravail ou Congés. 
+    (Migré le 25/01/2026)
+  trigger:
+    - platform: time
+      at: '05:00:00'
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - alias: Un événement Télétravail est en cours
+              condition: and
+              conditions:
+                - condition: state
+                  entity_id: calendar.maison
+                  state: 'on'
+                  alias: Un événement est en cours
+                - condition: state
+                  entity_id: calendar.maison
+                  attribute: message
+                  state: Télétravail
+                  alias: Le rendez-vous est de type Télétravail
+          sequence:
+            - service: netatmo.set_schedule
+              data:
+                schedule_name: Télétravail
+              target:
+                area_id:
+                  - bureau
+                  - chambre_louis
+                  - chambre_maxime
+                  - chambre_parents
+                  - entree
+                  - salle_a_manger
+        - conditions:
+            - alias: Un événement Congés est en cours
+              condition: and
+              conditions:
+                - condition: state
+                  entity_id: calendar.maison
+                  state: 'on'
+                  alias: Un événement est en cours
+                - condition: state
+                  entity_id: calendar.maison
+                  attribute: message
+                  state: Congés
+                  alias: Le rendez-vous est de type Congés
+          sequence:
+            - service: netatmo.set_schedule
+              data:
+                schedule_name: Vacances
+              target:
+                area_id:
+                  - bureau
+                  - chambre_louis
+                  - chambre_maxime
+                  - chambre_parents
+                  - entree
+                  - salle_a_manger
+      default:
+        - service: netatmo.set_schedule
+          data:
+            schedule_name: Quotidien
+          target:
+            area_id:
+              - bureau
+              - chambre_louis
+              - chambre_maxime
+              - chambre_parents
+              - entree
+              - salle_a_manger
+  mode: single
