@@ -2,7 +2,6 @@
 .cloud
 .ssh
 .storage
-blueprints
 custom_components
 deps
 themes
@@ -18,3 +17,5 @@ www
 zigbee*
 
 secrets.yaml
+
+opencode.json

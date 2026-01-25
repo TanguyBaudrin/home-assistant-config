@@ -1,0 +1,58 @@
+# Blueprint : Lumière sur Mouvement (pièce)
+# Allume une ou plusieurs lumières lorsqu'un mouvement est détecté.
+# Éteint les lumières automatiquement après X secondes sans mouvement.
+#
+# Exemple d'utilisation :
+#  use_blueprint:
+#    path: blueprints/automation/lumiere-sur-mouvement.yaml
+#    input:
+#      motion_entity: binary_sensor.votre_capteur
+#      light_target:
+#        area_id: cuisine
+#      no_motion_wait: 300
+
+blueprint:
+  name: Lumière sur mouvement (générique)
+  description: Allume automatiquement une lumière ou un groupe de lumières lorsqu’un capteur de mouvement détecte une présence. Les lumières s’éteignent automatiquement après une durée d’inactivité.
+  domain: automation
+  input:
+    motion_entity:
+      name: Capteur de mouvement
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+    light_target:
+      name: Lumière(s) à contrôler
+      selector:
+        target:
+          entity:
+            domain: light
+    no_motion_wait:
+      name: Délai avant extinction (secondes)
+      default: 300
+      selector:
+        number:
+          min: 60
+          max: 7200
+          step: 30
+
+automation:
+  trigger:
+    - platform: state
+      entity_id: !input motion_entity
+      to: 'on'
+  condition: []
+  action:
+    - service: light.turn_on
+      target: !input light_target
+    - wait_for_trigger:
+        - platform: state
+          entity_id: !input motion_entity
+          to: 'off'
+      timeout:
+        seconds: !input no_motion_wait
+      continue_on_timeout: true
+    - service: light.turn_off
+      target: !input light_target
+  mode: restart
