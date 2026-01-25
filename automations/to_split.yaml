@@ -1,90 +1,6 @@
-- id: '1699796906579'
-  alias: Auto - Cuisine - Lumières - Allumer les lumières en cas de mouvement
-  description: ''
-  use_blueprint:
-    path: homeassistant/motion_light.yaml
-    input:
-      motion_entity: binary_sensor.motion_sensor_motion_detection
-      light_target:
-        area_id: cuisine
-      no_motion_wait: 900
-- id: '1699802530095'
-  alias: Auto - Garage - Lumières - Allumage automatique des lampes sur détection
-    de mouvement
-  description: ''
-  use_blueprint:
-    path: homeassistant/motion_light.yaml
-    input:
-      motion_entity: binary_sensor.motion_sensor_motion_detection_2
-      light_target:
-        device_id:
-        - 685cca589003fea87012385c34573ea8
-        - 8855561d2919d86e2b6523cc86983ee2
-      no_motion_wait: 180
-- id: '1699817277063'
-  alias: '[Maison] Activation/Désactivation de l''éclairage automatique'
-  description: ''
-  triggers:
-  - entity_id:
-    - input_boolean.lumieres_automatiques
-    id: light_selector
-    trigger: state
-  conditions: []
-  actions:
-  - if:
-    - condition: state
-      entity_id: input_boolean.lumieres_automatiques
-      state: 'on'
-    then:
-    - data: {}
-      target:
-        entity_id:
-        - automation.lumiere_de_la_cuisine_automatique
-        - automation.salon_gestion_de_la_lumiere_avec_capteur_de_presence
-      action: automation.turn_on
-    else:
-    - data:
-        stop_actions: true
-      target:
-        entity_id:
-        - automation.lumiere_de_la_cuisine_automatique
-        - automation.salon_gestion_de_la_lumiere_avec_capteur_de_presence
-      action: automation.turn_off
-  mode: single
-- id: '1699818128381'
-  alias: '[Maison] Automatisation du soir'
-  description: ''
-  triggers:
-  - event: sunset
-    offset: 00:00
-    trigger: sun
-  - at: '22:00'
-    trigger: time
-  conditions: []
-  actions:
-  - data: {}
-    target:
-      entity_id: input_boolean.lumieres_automatiques
-    alias: Activer l'automatisation des lumières
-    action: input_boolean.turn_on
-  - data: {}
-    target:
-      area_id:
-      - chambre_des_parents
-      - cuisine
-      - salle_a_manger
-      - chambre_louis
-      - chambre_maxime
-    action: cover.close_cover
-  - data: {}
-    target:
-      entity_id: alarm_control_panel.aarlo_base_arlo_maison
-    alias: Passer Arlo en mode "nuit"
-    action: alarm_control_panel.alarm_arm_night
-  mode: single
 - id: '1699818890314'
   alias: Auto - Maison - Arlo - Gestion des modes arlo
-  description: ''
+  description: Cette automatisation gère dynamiquement le mode du système Arlo (présent, nuit ou absent) en fonction de l'heure, du lever/coucher de soleil et de la présence des résidents pour adapter la sécurité de la maison.
   triggers:
   - event: sunrise
     id: soleil_se_lève
@@ -188,8 +104,6 @@
       target:
         device_id: 9243b1e92ae159a2e333ccf8988a65ed
   mode: single
-
-
 - id: '1699870051044'
   alias: '[Maison] Automatisation du planning de chauffage'
   description: 'Automatisation pour gérer le planning du chauffage, actuellement le

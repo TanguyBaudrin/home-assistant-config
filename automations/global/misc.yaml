@@ -1,0 +1,30 @@
+- id: '1699818128381'
+  alias: Global - Routine - Activer « nuit » : lumières auto, volets, alarme
+  description: |
+    Active, à la tombée de la nuit ou à 22h, les automatismes de lumières, ferme tous les volets de la maison et passe l’alarme en mode nuit pour préparer la maison au coucher. Déclencheurs : coucher du soleil ou 22h. Actions : active input_boolean.lumieres_automatiques, ferme les volets des chambres et pièces communes, arme Arlo en mode nuit. (Migré le 2026-01-25)
+  trigger:
+    - platform: sun
+      event: sunset
+      offset: '00:00:00'
+    - platform: time
+      at: '22:00:00'
+  condition: []
+  action:
+    - alias: Activer l'automatisation des lumières
+      service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.lumieres_automatiques
+    - alias: Fermer tous les volets
+      service: cover.close_cover
+      target:
+        area_id:
+          - chambre_des_parents
+          - cuisine
+          - salle_a_manger
+          - chambre_louis
+          - chambre_maxime
+    - alias: Passer Arlo en mode "nuit"
+      service: alarm_control_panel.alarm_arm_night
+      target:
+        entity_id: alarm_control_panel.aarlo_base_arlo_maison
+  mode: single

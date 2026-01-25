@@ -1,0 +1,10 @@
+- id: '1699796906579'
+  alias: Cuisine - Lumières - Allumage automatique en cas de mouvement
+  description: Cette automatisation allume la lumière de la cuisine lors d’une détection de mouvement et l’éteint automatiquement après 15 minutes d’inactivité pour optimiser le confort et l’économie d’énergie.
+  use_blueprint:
+    path: homeassistant/motion_light.yaml
+    input:
+      motion_entity: binary_sensor.motion_sensor_motion_detection
+      light_target:
+        area_id: cuisine
+      no_motion_wait: 900
