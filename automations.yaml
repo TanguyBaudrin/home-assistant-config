@@ -1,0 +1,2780 @@
+- id: '1699796906579'
+  alias: Auto - Cuisine - Lumières - Allumer les lumières en cas de mouvement
+  description: ''
+  use_blueprint:
+    path: homeassistant/motion_light.yaml
+    input:
+      motion_entity: binary_sensor.motion_sensor_motion_detection
+      light_target:
+        area_id: cuisine
+      no_motion_wait: 900
+- id: '1699802530095'
+  alias: Auto - Garage - Lumières - Allumage automatique des lampes sur détection
+    de mouvement
+  description: ''
+  use_blueprint:
+    path: homeassistant/motion_light.yaml
+    input:
+      motion_entity: binary_sensor.motion_sensor_motion_detection_2
+      light_target:
+        device_id:
+        - 685cca589003fea87012385c34573ea8
+        - 8855561d2919d86e2b6523cc86983ee2
+      no_motion_wait: 180
+- id: '1699817277063'
+  alias: '[Maison] Activation/Désactivation de l''éclairage automatique'
+  description: ''
+  triggers:
+  - entity_id:
+    - input_boolean.lumieres_automatiques
+    id: light_selector
+    trigger: state
+  conditions: []
+  actions:
+  - if:
+    - condition: state
+      entity_id: input_boolean.lumieres_automatiques
+      state: 'on'
+    then:
+    - data: {}
+      target:
+        entity_id:
+        - automation.lumiere_de_la_cuisine_automatique
+        - automation.salon_gestion_de_la_lumiere_avec_capteur_de_presence
+      action: automation.turn_on
+    else:
+    - data:
+        stop_actions: true
+      target:
+        entity_id:
+        - automation.lumiere_de_la_cuisine_automatique
+        - automation.salon_gestion_de_la_lumiere_avec_capteur_de_presence
+      action: automation.turn_off
+  mode: single
+- id: '1699818128381'
+  alias: '[Maison] Automatisation du soir'
+  description: ''
+  triggers:
+  - event: sunset
+    offset: 00:00
+    trigger: sun
+  - at: '22:00'
+    trigger: time
+  conditions: []
+  actions:
+  - data: {}
+    target:
+      entity_id: input_boolean.lumieres_automatiques
+    alias: Activer l'automatisation des lumières
+    action: input_boolean.turn_on
+  - data: {}
+    target:
+      area_id:
+      - chambre_des_parents
+      - cuisine
+      - salle_a_manger
+      - chambre_louis
+      - chambre_maxime
+    action: cover.close_cover
+  - data: {}
+    target:
+      entity_id: alarm_control_panel.aarlo_base_arlo_maison
+    alias: Passer Arlo en mode "nuit"
+    action: alarm_control_panel.alarm_arm_night
+  mode: single
+- id: '1699818890314'
+  alias: Auto - Maison - Arlo - Gestion des modes arlo
+  description: ''
+  triggers:
+  - event: sunrise
+    id: soleil_se_lève
+    trigger: sun
+  - at: input_datetime.heure_de_reveil_de_la_maison
+    id: heure_de_réveil
+    trigger: time
+  - event: sunset
+    offset: 00:00
+    trigger: sun
+    id: soleil_se_couche
+  - trigger: time
+    at: '22:00:00'
+    id: heure_de_coucher
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: enter
+    id: agnes_rentre
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: enter
+    id: tanguy_rentre
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: leave
+    id: agnes_quitte
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: leave
+    id: tanguy_quitte
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: zone
+          entity_id: person.agnes
+          zone: zone.home
+        - condition: zone
+          entity_id: person.tanguy_baudrin
+          zone: zone.home
+        alias: Quelqu'un est à la maison
+      - alias: Déclenché le matin
+        condition: or
+        conditions:
+        - alias: Déclenché par le soleil après l'heure de réveil de la maison
+          condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - soleil_se_lève
+          - condition: time
+            after: input_datetime.heure_de_reveil_de_la_maison
+        - alias: Déclenché à 7h15, et le soleil est déjà levé
+          condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - heure_de_réveil
+          - condition: sun
+            after: sunrise
+        - condition: trigger
+          id:
+          - agnes_rentre
+          - tanguy_rentre
+      sequence:
+      - action: alarm_control_panel.alarm_arm_home
+        metadata: {}
+        data: {}
+        target:
+          device_id: 9243b1e92ae159a2e333ccf8988a65ed
+    - conditions:
+      - condition: trigger
+        id:
+        - soleil_se_couche
+        - heure_de_coucher
+      - condition: or
+        conditions:
+        - condition: zone
+          entity_id: person.agnes
+          zone: zone.home
+        - condition: zone
+          entity_id: person.tanguy_baudrin
+          zone: zone.home
+        alias: Quelqu'un est à la maison
+      sequence:
+      - action: alarm_control_panel.alarm_arm_night
+        metadata: {}
+        data: {}
+        target:
+          device_id: 9243b1e92ae159a2e333ccf8988a65ed
+    default:
+    - action: alarm_control_panel.alarm_arm_away
+      metadata: {}
+      data: {}
+      target:
+        device_id: 9243b1e92ae159a2e333ccf8988a65ed
+  mode: single
+- id: '1699861922965'
+  alias: '[Bureau] Automatisation à l''allumage du PC de tanguy'
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - device_tracker.desktop_tang
+    to: home
+  condition:
+  - condition: state
+    entity_id: cover.velux_external_cover_roller_shutter_4
+    state: closed
+  action:
+  - service: light.turn_on
+    data:
+      transition: 20
+    target:
+      area_id: bureau
+  mode: single
+- id: '1699862552853'
+  alias: Auto - Bureau - Lumière - Extinction à l'ouverture du volet
+  description: ''
+  triggers:
+  - entity_id:
+    - cover.velux_external_cover_roller_shutter_4
+    to: opening
+    trigger: state
+  conditions: []
+  actions:
+  - data: {}
+    target:
+      area_id: bureau
+    action: light.turn_off
+  mode: single
+- id: '1699870051044'
+  alias: '[Maison] Automatisation du planning de chauffage'
+  description: 'Automatisation pour gérer le planning du chauffage, actuellement le
+    fonctionnement est le suivant.
+
+    A 5h du matin, on vérifie différentes options:
+
+    - Est-ce qu''il ya un événement "Télétravail" en cours ? => Si oui, on passe en
+    planning télétravail sur Netatmo
+
+    - Dans les autres cas => On mets en planning "Quotidien" sur Netatmo'
+  trigger:
+  - platform: time
+    at: 05:00:00
+  condition: []
+  action:
+  - choose:
+    - conditions:
+      - alias: Il y a un évènement en cours dans l'agenda, et son objet est "Télétravail"
+        condition: and
+        conditions:
+        - condition: state
+          entity_id: calendar.maison
+          state: 'on'
+          alias: Un événement est en cours
+        - condition: state
+          entity_id: calendar.maison
+          attribute: message
+          state: Télétravail
+          alias: Un rendez-vous est en cours avec comme objet "Télétravail"
+      sequence:
+      - service: netatmo.set_schedule
+        data:
+          schedule_name: Télétravail
+        target:
+          area_id:
+          - bureau
+          - chambre_louis
+          - chambre_maxime
+          - chambre_parents
+          - entree
+          - salle_a_manger
+        alias: Passage au planning "Télétravail"
+    - conditions:
+      - alias: Il y a un évènement en cours dans l'agenda, et son objet est "Télétravail"
+        condition: and
+        conditions:
+        - condition: state
+          entity_id: calendar.maison
+          state: 'on'
+          alias: Un événement est en cours
+        - alias: Un rendez-vous est en cours avec comme objet "Congés"
+          condition: state
+          entity_id: calendar.maison
+          attribute: message
+          state: Congés
+      sequence:
+      - alias: Passage au planning "Vacances"
+        service: netatmo.set_schedule
+        data:
+          schedule_name: Vacances
+        target:
+          area_id:
+          - bureau
+          - chambre_louis
+          - chambre_maxime
+          - chambre_parents
+          - entree
+          - salle_a_manger
+    default:
+    - service: netatmo.set_schedule
+      data:
+        schedule_name: Quotidien
+      target:
+        area_id:
+        - bureau
+        - chambre_louis
+        - chambre_maxime
+        - chambre_parents
+        - entree
+        - salle_a_manger
+      alias: Passage au planning "Quotidien" côté netatmo
+  mode: single
+- id: '1699886379768'
+  alias: Auto - Bureau - Lumières - Allumage quand le volet se ferme
+  description: ''
+  triggers:
+  - entity_id:
+    - cover.velux_external_cover_roller_shutter_4
+    to: closed
+    trigger: state
+  conditions: []
+  actions:
+  - if:
+    - condition: or
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.prise_bureau_agnes_puissance
+        above: 8
+      - condition: numeric_state
+        entity_id: sensor.prise_bureau_tanguy_puissance
+        above: 40
+    then:
+    - data:
+        transition: 30
+      target:
+        area_id: bureau
+      alias: Allumer la lumière du bureau
+      action: light.turn_on
+  mode: single
+- id: '1700034397962'
+  alias: '[Maison] Automatisation quand tout le monde est absent'
+  description: ''
+  triggers:
+  - entity_id:
+    - person.agnes
+    - person.tanguy_baudrin
+    to: not_home
+    from: home
+    alias: Quand Agnès/Tanguy passent absent
+    trigger: state
+  conditions:
+  - condition: and
+    conditions:
+    - condition: state
+      entity_id: person.agnes
+      state: not_home
+    - condition: state
+      entity_id: person.tanguy_baudrin
+      state: not_home
+    alias: Agnès et Tanguy sont absents
+    enabled: true
+  actions:
+  - alias: Passer les caméras Arlo en mode armé
+    data: {}
+    target:
+      entity_id: alarm_control_panel.aarlo_base_arlo_maison
+    action: alarm_control_panel.alarm_arm_away
+  - data:
+      preset_mode: away
+    target:
+      entity_id: climate.sejour
+    action: climate.set_preset_mode
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id: bureau
+  mode: single
+- id: '1700035974680'
+  alias: '[Maison] En cas de changement d''état sur Arlo'
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - alarm_control_panel.aarlo_base_arlo_maison
+    from:
+    to:
+  condition: []
+  action:
+  - service: notify.mobile_app_iphone_de_tanguy
+    data:
+      title: Changement de mode Arlo
+      message: Arlo passe en mode {{ trigger.to_state.state }}
+  mode: single
+- id: '1700041591498'
+  alias: '[Maison] Une caméra est déconnectée'
+  description: ''
+  triggers:
+  - type: not_connected
+    device_id: 69b55e596098bf4d9ff6926fde3b37e2
+    entity_id: dac3559ae6778fd78af6b383915cb201
+    domain: binary_sensor
+    alias: Caméra abri de jardin n'est plus connectée
+    id: abri de jardin
+    trigger: device
+  - alias: Caméra terrasse n'est plus connectée
+    type: not_connected
+    device_id: 4af4fafa7852933d37f18426446a3e82
+    entity_id: 33baac5db208fc4735dbd8c136bb997f
+    domain: binary_sensor
+    id: terrasse
+    trigger: device
+  - alias: Caméra garage côté jardin n'est plus connectée
+    type: not_connected
+    device_id: a7af7b4e2aef8ea17ec6e6e317e856d2
+    entity_id: 88549828dc45a49097062a2805555a47
+    domain: binary_sensor
+    id: garage coté jardin
+    trigger: device
+  conditions: []
+  actions:
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      title: Caméra déconnectée
+      message: La caméra {{ trigger.id }} n'est plus connectée
+  mode: single
+- id: '1700041812633'
+  alias: '[Maison] Automatisation sur moins de 10% de batterie sur les caméra'
+  description: ''
+  triggers:
+  - type: battery_level
+    device_id: 69b55e596098bf4d9ff6926fde3b37e2
+    entity_id: 48dc69f0808fe6a975e418f4cb0a96e5
+    domain: sensor
+    below: 10
+    id: abri de jardin
+    trigger: device
+  - type: battery_level
+    device_id: 4af4fafa7852933d37f18426446a3e82
+    entity_id: 4e06bfd72bfd4a955e12d1f118ff6c07
+    domain: sensor
+    id: terrasse
+    below: 10
+    trigger: device
+  - type: battery_level
+    device_id: a7af7b4e2aef8ea17ec6e6e317e856d2
+    entity_id: dea0cb06fff8c475ba7cc05fb4af3da2
+    domain: sensor
+    id: garage côté jardin
+    below: 10
+    trigger: device
+  conditions: []
+  actions:
+  - data:
+      title: Batterie faible
+      message: La caméra {{ trigger.id }} a moins de 10% de batterie
+    action: notify.mobile_app_iphone_pro_de_tanguy
+  mode: single
+- id: '1700051716580'
+  alias: '[Zones] Tanguy quitte le travail'
+  description: ''
+  triggers:
+  - entity_id: person.tanguy_baudrin
+    zone: zone.sfeir_lille
+    event: leave
+    id: sfeir
+    trigger: zone
+  conditions:
+  - alias: Les jours de semaine après 16h
+    condition: time
+    after: '13:00:00'
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  actions:
+  - action: notify.mobile_app_iphone_de_agnes
+    metadata: {}
+    data:
+      message: Tanguy vient de partir de {{ trigger.id }}
+      title: Tanguy viens de partir
+  mode: single
+- id: '1700307990206'
+  alias: Auto - Global - Technique - Quand quelqu'un rentre à la maison
+  description: ''
+  triggers:
+  - alias: Quand Agnès passe présente
+    entity_id:
+    - person.agnes
+    to: home
+    from: not_home
+    id: Agnes
+    trigger: state
+  - alias: Quand Tanguy passe présent
+    entity_id:
+    - person.tanguy_baudrin
+    to: home
+    from: not_home
+    id: Tanguy
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      preset_mode: schedule
+    target:
+      entity_id: climate.sejour
+    action: climate.set_preset_mode
+  - if:
+    - condition: state
+      entity_id: alarm_control_panel.aarlo_base_arlo_maison
+      state: armed_away
+    then:
+    - data: {}
+      target:
+        device_id: 9243b1e92ae159a2e333ccf8988a65ed
+      action: alarm_control_panel.alarm_arm_home
+    alias: Mettre Arlo en mode présent s’il était en mode absent
+  - alias: Envoyer notifications de machine à laver/sèche linge terminé
+    choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.machine_a_laver_a_sortir
+        state: 'on'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: trigger
+            id:
+            - Tanguy
+          sequence:
+          - action: notify.mobile_app_iphone_pro_de_tanguy
+            metadata: {}
+            data:
+              message: La machine a laver est terminée
+              title: Machine à laver
+        - conditions:
+          - condition: trigger
+            id:
+            - Agnes
+          sequence:
+          - action: notify.mobile_app_iphone_de_agnes
+            metadata: {}
+            data:
+              message: La machine a laver est terminée
+              title: Machine à laver
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.machine_a_laver_a_sortir
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.seche_linge_a_sortir
+        state: 'on'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: trigger
+            id:
+            - Tanguy
+          sequence:
+          - action: notify.mobile_app_iphone_pro_de_tanguy
+            metadata: {}
+            data:
+              message: La sèche linge est terminé
+              title: Sèche linge
+        - conditions:
+          - condition: trigger
+            id:
+            - Agnes
+          sequence:
+          - action: notify.mobile_app_iphone_de_agnes
+            metadata: {}
+            data:
+              message: La sèche linge est terminé
+              title: Sèche linge
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.seche_linge_a_sortir
+  mode: single
+- id: '1700388839476'
+  alias: '[Maison] Changement de préréglage thermostat netatmo'
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - climate.sejour
+    attribute: preset_mode
+  condition: []
+  action:
+  - service: notify.mobile_app_iphone_de_tanguy
+    data:
+      title: Changement de mode Netatmo
+      message: Netatmo passe en mode {{ state_attr('climate.sejour', 'preset_mode')
+        }}
+  mode: single
+- id: '1702810071752'
+  alias: '[Maison] Une vanne netatmo n’est plus disponible'
+  description: ''
+  triggers:
+  - entity_id:
+    - climate.netatmo_valve_1
+    - climate.netatmo_valve_2
+    - climate.netatmo_valve_4
+    - climate.netatmo_valve_5
+    - climate.netatmo_valve_6
+    - climate.netatmo_valve_7
+    - climate.netatmo_valve_8
+    - climate.netatmo_valve_9
+    to: unavailable
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      title: Vanne indisponible
+      message: Une vanne dans {{ area_name(trigger.entity_id) }} n'est plus disponible
+    action: notify.mobile_app_iphone_pro_de_tanguy
+  mode: single
+- id: '1734338962729'
+  alias: Notification - Garage - Machine à laver - Notification de fin de lavage
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.machine_a_laver_puissance
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
+    above: 1000
+    id: machine-en-route
+  - trigger: numeric_state
+    entity_id:
+    - sensor.machine_a_laver_puissance
+    below: 1
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
+    id: machine-terminee
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - machine-en-route
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.machine_a_laver_en_cours
+    - conditions:
+      - condition: trigger
+        id:
+        - machine-terminee
+      - condition: state
+        entity_id: input_boolean.machine_a_laver_en_cours
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.machine_a_laver_en_cours
+      - choose:
+        - conditions:
+          - condition: and
+            conditions:
+            - condition: zone
+              entity_id: device_tracker.iphone_de_agnes_2
+              zone: zone.home
+            - condition: zone
+              entity_id: person.tanguy_baudrin
+              zone: zone.home
+          sequence:
+          - action: notify.mobile_app_iphone_de_agnes
+            metadata: {}
+            data:
+              title: Machine à laver
+              message: 'La machine à laver est terminée '
+          - action: notify.mobile_app_iphone_pro_de_tanguy
+            metadata: {}
+            data:
+              message: 'La machine à laver est terminée '
+              title: Machine à laver
+        - conditions:
+          - condition: zone
+            entity_id: person.tanguy_baudrin
+            zone: zone.home
+          sequence:
+          - action: notify.mobile_app_iphone_pro_de_tanguy
+            metadata: {}
+            data:
+              message: 'La machine à laver est terminée '
+              title: Machine à laver
+        - conditions:
+          - condition: zone
+            entity_id: person.agnes
+            zone: zone.home
+          sequence:
+          - action: notify.mobile_app_iphone_de_agnes
+            metadata: {}
+            data:
+              title: Machine à laver
+              message: 'La machine à laver est terminée '
+        default:
+        - action: input_boolean.turn_on
+          metadata: {}
+          data: {}
+          target:
+            entity_id: input_boolean.machine_a_laver_a_sortir
+      - condition: time
+        after: 09:00:00
+        before: '22:00:00'
+      - parallel:
+        - action: tts.speak
+          metadata: {}
+          target:
+            entity_id: tts.google_translate_fr_fr
+          data:
+            cache: true
+            media_player_entity_id: media_player.googlehome4148_2
+            message: La machine à laver est terminée
+        - action: tts.speak
+          metadata: {}
+          target:
+            entity_id: tts.google_translate_fr_fr
+          data:
+            cache: true
+            media_player_entity_id: media_player.enceinte_salle_de_bain_2
+            message: La machine à laver est terminée
+        - action: tts.speak
+          metadata: {}
+          target:
+            entity_id: tts.google_translate_fr_fr
+          data:
+            cache: true
+            media_player_entity_id: media_player.sejour
+            message: La machine à laver est terminée
+  mode: single
+- id: '1734345712581'
+  alias: Notification - Garage - Sèche linge - Notification de fin de séchage
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.tz3000_2putqrmw_ts011f_puissance_2
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
+    above: 1000
+    id: sache-linge-en-route
+  - trigger: numeric_state
+    entity_id:
+    - sensor.tz3000_2putqrmw_ts011f_puissance_2
+    below: 1
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
+    id: seche-linge-fini
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - sache-linge-en-route
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.seche_linge_en_cours
+    - conditions:
+      - condition: trigger
+        id:
+        - seche-linge-fini
+      - condition: state
+        entity_id: input_boolean.seche_linge_en_cours
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.seche_linge_en_cours
+      - choose:
+        - conditions:
+          - condition: and
+            conditions:
+            - condition: zone
+              entity_id: device_tracker.iphone_de_agnes_2
+              zone: zone.home
+            - condition: zone
+              entity_id: person.tanguy_baudrin
+              zone: zone.home
+          sequence:
+          - action: notify.mobile_app_iphone_de_agnes
+            metadata: {}
+            data:
+              title: Sèche linge
+              message: Le sèche linge est terminé
+          - action: notify.mobile_app_iphone_pro_de_tanguy
+            metadata: {}
+            data:
+              message: Le sèche linge est terminé
+              title: Sèche linge
+        - conditions:
+          - condition: zone
+            entity_id: person.tanguy_baudrin
+            zone: zone.home
+          sequence:
+          - action: notify.mobile_app_iphone_pro_de_tanguy
+            metadata: {}
+            data:
+              message: Le sèche linge est terminé
+              title: Sèche linge
+        - conditions:
+          - condition: zone
+            entity_id: person.agnes
+            zone: zone.home
+          sequence:
+          - action: notify.mobile_app_iphone_de_agnes
+            metadata: {}
+            data:
+              title: Sèche linge
+              message: Le sèche linge est terminé
+        default:
+        - action: input_boolean.turn_on
+          metadata: {}
+          data: {}
+          target:
+            entity_id: input_boolean.seche_linge_a_sortir
+      - action: counter.increment
+        metadata: {}
+        target:
+          entity_id: counter.nombre_de_cycles_de_sechages
+        data: {}
+      - parallel:
+        - action: tts.speak
+          metadata: {}
+          target:
+            entity_id: tts.google_translate_fr_fr
+          data:
+            cache: true
+            media_player_entity_id: media_player.googlehome4148_2
+            message: Le sèche-linge est terminé
+        - action: tts.speak
+          metadata: {}
+          target:
+            entity_id: tts.google_translate_fr_fr
+          data:
+            cache: true
+            media_player_entity_id: media_player.enceinte_salle_de_bain_2
+            message: Le sèche-linge est terminé
+        - action: tts.speak
+          metadata: {}
+          target:
+            entity_id: tts.google_translate_fr_fr
+          data:
+            cache: true
+            media_player_entity_id: media_player.sejour_2
+            message: Le sèche-linge est terminé
+  mode: single
+- id: '1734358965089'
+  alias: '[Maison] Changement condition RTE tempo'
+  description: ''
+  triggers:
+  - type: turned_on
+    device_id: 8e593b8e10f5eb1417a460f71c9d4cf3
+    entity_id: c9b249b9333bf862966e0ad3b5f0b763
+    domain: binary_sensor
+    metadata:
+      secondary: false
+    trigger: device
+    id: HC Activé
+  - type: turned_off
+    device_id: 8e593b8e10f5eb1417a460f71c9d4cf3
+    entity_id: c9b249b9333bf862966e0ad3b5f0b763
+    domain: binary_sensor
+    trigger: device
+    id: HC Désactivé
+  conditions: []
+  actions:
+  - if:
+    - condition: trigger
+      id:
+      - HC Activé
+    then:
+    - choose:
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Bleu
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Bleu HC
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Blanc
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Blanc HC
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Rouge
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Rouge HC
+          target:
+            entity_id: select.consommation_rte_tempo
+    else:
+    - choose:
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Bleu
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Bleu HP
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Blanc
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Blanc HP
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Rouge
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Rouge HP
+          target:
+            entity_id: select.consommation_rte_tempo
+  mode: single
+- id: '1734594420265'
+  alias: Auto - Salon - Prise TV - Automatiser l'allumage/extinction de la prise
+  description: ''
+  triggers:
+  - device_id: 9211d9c11a02bd5ddef116d430e0ead1
+    domain: media_player
+    entity_id: dc7f2bab408447fd1c5f891b2c9fec6b
+    type: turned_on
+    trigger: device
+    id: Allumage
+  - device_id: 9211d9c11a02bd5ddef116d430e0ead1
+    domain: media_player
+    entity_id: dc7f2bab408447fd1c5f891b2c9fec6b
+    type: turned_off
+    trigger: device
+    id: Extinction
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Allumage
+      sequence:
+      - type: turn_on
+        device_id: 364329340b52f4f42a08dfdf3305ac40
+        entity_id: c1372e3502b37b9c3d41bf0b21e86e46
+        domain: switch
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 3
+      - action: rest_command.sony_bravia_tv_set_audio_output
+        metadata: {}
+        data:
+          url: http://10.0.3.175
+    - conditions:
+      - condition: trigger
+        id:
+        - Extinction
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+      - condition: state
+        entity_id: remote.sony_kd_75xh9096
+        state: 'off'
+      - type: turn_off
+        device_id: 364329340b52f4f42a08dfdf3305ac40
+        entity_id: c1372e3502b37b9c3d41bf0b21e86e46
+        domain: switch
+  mode: single
+- id: '1734711288308'
+  alias: '[Salon] Gestion de la lumière avec capteur de présence'
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: 980a0228024674ae9c7c9020e34567d3
+    entity_id: 05c8ba1d26d43b0decfc652a3a1d4850
+    domain: binary_sensor
+    trigger: device
+    id: Occupé
+  - type: not_occupied
+    device_id: 980a0228024674ae9c7c9020e34567d3
+    entity_id: 05c8ba1d26d43b0decfc652a3a1d4850
+    domain: binary_sensor
+    trigger: device
+    id: Non occupé
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Occupé
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data:
+          kelvin: 6500
+        target:
+          area_id: salon
+    - conditions:
+      - condition: trigger
+        id:
+        - Non occupé
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          area_id: salon
+  mode: single
+- id: '1735728412059'
+  alias: Mode - Grenier - VMC - Gestion des commutateurs
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_select.interrupteur_vmc
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_select.interrupteur_vmc
+        state: 'Off'
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_lent
+          - switch.module_vmc_commutateur_rapide
+    - conditions:
+      - condition: state
+        entity_id: input_select.interrupteur_vmc
+        state: Vitesse 1
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_rapide
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_lent
+    - conditions:
+      - condition: state
+        entity_id: input_select.interrupteur_vmc
+        state: Vitesse 2
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_lent
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.module_vmc_commutateur_rapide
+  mode: single
+- id: '1735808351780'
+  alias: Auto - Grenier - VMC - Gestion des différentes vitesses
+  description: ''
+  triggers:
+  - trigger: time
+    at: '23:00:00'
+    id: A 23h
+  - trigger: time
+    at: 07:00:00
+    id: A 7h
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: leave
+    id: Agnes part
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: leave
+    id: Tanguy part
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: enter
+    id: Agnès rentre
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: enter
+    id: Tanguy rentre
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - alias: Si déclenché par 23h ou départ, et personne n'est à la maison, ou il
+          est passé 23h
+        condition: and
+        conditions:
+        - alias: Agnès et tanguy sont absent, ou il est passé 23h
+          condition: or
+          conditions:
+          - condition: time
+            after: '22:59:00'
+          - condition: and
+            conditions:
+            - condition: not
+              conditions:
+              - condition: zone
+                entity_id: person.agnes
+                zone: zone.home
+              alias: Agnès n'est pas à la maison
+            - condition: not
+              conditions:
+              - condition: zone
+                entity_id: person.tanguy_baudrin
+                zone: zone.home
+              alias: Tanguy n'est pas à la maison
+            alias: Agnès et Tanguy ne sont pas là
+        - condition: trigger
+          id:
+          - A 23h
+          - Agnes part
+          - Tanguy part
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 30
+          seconds: 0
+          milliseconds: 0
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: 'Off'
+        target:
+          entity_id: input_select.interrupteur_vmc
+    - conditions:
+      - condition: trigger
+        id:
+        - A 7h
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 1
+        target:
+          entity_id: input_select.interrupteur_vmc
+    - conditions:
+      - condition: trigger
+        id:
+        - Tanguy rentre
+        - Agnès rentre
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 1
+        target:
+          entity_id: input_select.interrupteur_vmc
+  mode: restart
+- id: '1735821043121'
+  alias: Notification - Global - Batterie - Alertes quand les piles doivent être remplacées
+  description: Battery Low Notification with auto dismiss
+  triggers:
+  - trigger: event
+    event_type: battery_notes_battery_threshold
+    event_data:
+      battery_low: true
+    id: low
+    alias: Battery went low
+  - trigger: event
+    event_type: battery_notes_battery_threshold
+    event_data:
+      battery_low: false
+    id: high
+    alias: Battery went high
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - low
+      sequence:
+      - action: notify.mobile_app_iphone_pro_de_tanguy
+        metadata: {}
+        data:
+          title: '{{ trigger.event.data.device_name }} Battery Low
+
+            '
+          notification_id: '{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id
+            }}'
+          message: 'The device has a battery level of {{ trigger.event.data.battery_level
+            }}% {{ ''\n'' -}} You need {{ trigger.event.data.battery_quantity }}x
+            {{ trigger.event.data.battery_type }}
+
+            '
+      - action: persistent_notification.create
+        data:
+          title: '{{ trigger.event.data.device_name }} Battery Low
+
+            '
+          notification_id: '{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id
+            }}'
+          message: 'The device has a battery level of {{ trigger.event.data.battery_level
+            }}% {{ ''\n'' -}} You need {{ trigger.event.data.battery_quantity }}x
+            {{ trigger.event.data.battery_type }}
+
+            '
+    - conditions:
+      - condition: trigger
+        id:
+        - high
+      sequence:
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: '{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id
+            }}'
+  mode: queued
+- id: '1736019595242'
+  alias: Tech - Chambre parents - Hue smart button - Actions sur appuie sur le bouton
+  description: ''
+  triggers:
+  - event_type:
+    - deconz_event
+    - zha_event
+    event_data:
+      device_id: 9889704f550783eeb7a0fef44c78ebbb
+    trigger: event
+  conditions:
+  - condition: template
+    value_template: '{%- set trigger_action -%} {%- if integration_id == "zigbee2mqtt"
+      -%} {{ trigger.event.data.new_state.state }} {%- elif integration_id == "deconz"
+      -%} {{ trigger.event.data.event }} {%- elif integration_id == "zha" -%} {{ trigger.event.data.command
+      }} {%- endif -%} {%- endset -%} {{ trigger_action not in ["","None"] }}'
+  actions:
+  - delay:
+      milliseconds: 0
+  - variables:
+      trigger_action: '{%- if integration_id == "zigbee2mqtt" -%} {{ trigger.event.data.new_state.state
+        }} {%- elif integration_id == "deconz" -%} {{ trigger.event.data.event }}
+        {%- elif integration_id == "zha" -%} {{ trigger.event.data.command }} {%-
+        endif -%}'
+      trigger_delta: '{{ (as_timestamp(now()) - ((states(helper_last_controller_event)
+        | from_json).t if helper_last_controller_event is not none and (states(helper_last_controller_event)
+        | regex_match("^\{((\"a\": \".*\"|\"t\": \d+\.\d+)(, )?){2}\}$")) else as_timestamp("1970-01-01
+        00:00:00"))) * 1000 }}'
+  - data:
+      entity_id: input_text.last_smart_button_event
+      value: '{{ {"a":trigger_action,"t":as_timestamp(now())} | to_json }}'
+    action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger_action | string in button_short }}'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ button_double_press }}'
+          sequence:
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ trigger_action | string in states(helper_last_controller_event)
+                  and trigger_delta | int <= helper_double_press_delay | int }}'
+              sequence:
+              - data:
+                  entity_id: input_text.last_smart_button_event
+                  value: '{{ {"a":"double_press","t":as_timestamp(now())} | to_json
+                    }}'
+                action: input_text.set_value
+              - event: ahb_controller_event
+                event_data:
+                  controller: '{{ controller_id }}'
+                  action: button_double
+              - choose:
+                - conditions: []
+                  sequence: []
+            default:
+            - delay:
+                milliseconds: '{{ adjusted_double_press_delay }}'
+            - event: ahb_controller_event
+              event_data:
+                controller: '{{ controller_id }}'
+                action: button_short
+            - choose:
+              - conditions: []
+                sequence: []
+        default:
+        - event: ahb_controller_event
+          event_data:
+            controller: '{{ controller_id }}'
+            action: button_short
+        - choose:
+          - conditions: []
+            sequence: []
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger_action | string in button_long }}'
+      sequence:
+      - event: ahb_controller_event
+        event_data:
+          controller: '{{ controller_id }}'
+          action: button_long
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ button_long_loop }}'
+          sequence:
+          - repeat:
+              while:
+              - condition: template
+                value_template: '{{ repeat.index < button_long_max_loop_repeats |
+                  int }}'
+              sequence: []
+        default: []
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger_action | string in button_release }}'
+      sequence:
+      - event: ahb_controller_event
+        event_data:
+          controller: '{{ controller_id }}'
+          action: button_release
+      - choose:
+        - conditions: []
+          sequence:
+          - action: automation.trigger
+            metadata: {}
+            data:
+              skip_condition: true
+            target:
+              entity_id: automation.auto_chambre_parents_apple_tv_mettre_en_route_l_apple_tv
+  variables:
+    integration: ZHA
+    button_long_loop: false
+    button_long_max_loop_repeats: 500
+    button_double_press: false
+    helper_last_controller_event: input_text.last_smart_button_event
+    helper_double_press_delay: 500
+    helper_debounce_delay: 0
+    integration_id: '{{ integration | lower }}'
+    adjusted_double_press_delay: '{{ [helper_double_press_delay - helper_debounce_delay,
+      100] | max }}'
+    actions_mapping:
+      deconz:
+        button_short:
+        - '1000'
+        button_long:
+        - '1001'
+        button_release:
+        - '1003'
+      zha:
+        button_short:
+        - on_short_release
+        button_long:
+        - on_hold
+        button_release:
+        - on_long_release
+    button_short: '{{ actions_mapping[integration_id]["button_short"] }}'
+    button_long: '{{ actions_mapping[integration_id]["button_long"] }}'
+    button_release: '{{ actions_mapping[integration_id]["button_release"] }}'
+    controller_device: ac8c8824a5af5973b34d051003752d2b
+    controller_id: '{{controller_device}}'
+  mode: restart
+  max_exceeded: silent
+- id: '1736333581558'
+  alias: Mode - Garage - Commutateur porte de garage - Envoi de la commande à l'interrupteur
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_button.bouton_porte_de_garage
+  conditions: []
+  actions:
+  - action: switch.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.commutateur_porte_de_garage_commutateur
+  - action: switch.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.commutateur_porte_de_garage_commutateur
+  mode: single
+- id: '1736785924780'
+  alias: 'Auto - Bureau - Prise Tanguy - Gestion de l''allumage/extinction en automatique
+    de la prise '
+  description: ''
+  triggers:
+  - trigger: time
+    at: '22:30:00'
+    id: a 22h30
+  - trigger: time
+    at: 08:00:00
+    id: a 8h
+    weekday:
+    - mon
+    - wed
+    - fri
+  - trigger: time
+    at: 09:00:00
+    id: a 9h
+    weekday:
+    - mon
+    - wed
+    - fri
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: leave
+    id: Tanguy part
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - a 22h30
+      sequence:
+      - type: turn_off
+        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
+        entity_id: 07abe75541f0449afc31a3328b875d03
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - a 8h
+      sequence:
+      - type: turn_on
+        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
+        entity_id: 07abe75541f0449afc31a3328b875d03
+        domain: switch
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - a 9h
+        - condition: numeric_state
+          entity_id: sensor.prise_bureau_tanguy_puissance
+          below: 29.9
+      sequence:
+      - type: turn_off
+        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
+        entity_id: 07abe75541f0449afc31a3328b875d03
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - Tanguy rentre
+      sequence:
+      - type: turn_on
+        device_id: 4e60ef92ec84eeddcb8de70c93209c7c
+        entity_id: 07abe75541f0449afc31a3328b875d03
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - Tanguy part
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 15
+          seconds: 0
+      - if:
+        - condition: not
+          conditions:
+          - condition: zone
+            entity_id: person.tanguy_baudrin
+            zone: zone.home
+          alias: Tanguy n'est pas à la maison
+        then:
+        - type: turn_off
+          device_id: 4e60ef92ec84eeddcb8de70c93209c7c
+          entity_id: 07abe75541f0449afc31a3328b875d03
+          domain: switch
+        alias: Désactiver la prise si Tanguy n'est pas là
+  mode: single
+- id: '1736799359847'
+  alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ewelink_snzb_02p_humidite_2
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    above: 70
+    id: Humidité haute
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ewelink_snzb_02p_humidite_2
+    id: Humidité basse
+    below: 70
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Humidité haute
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 2
+        target:
+          entity_id: input_select.interrupteur_vmc
+    - conditions:
+      - condition: trigger
+        id:
+        - Humidité basse
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 1
+        target:
+          entity_id: input_select.interrupteur_vmc
+  mode: single
+- id: '1736933681489'
+  alias: Auto - Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
+  description: ''
+  triggers:
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: enter
+  conditions:
+  - condition: and
+    conditions:
+    - condition: state
+      entity_id: binary_sensor.porte_de_garage
+      state: 'off'
+    - alias: Tanguy rentre à vélo ou à pied
+      condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.iphone_pro_de_tanguy_activity
+        state: Cycling
+      - condition: state
+        entity_id: sensor.iphone_pro_de_tanguy_activity
+        state: Walking
+  actions:
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      message: Tanguy rentre à vélo
+      title: Vélo
+  - action: input_button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_button.bouton_porte_de_garage
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      area_id: garage
+  - delay:
+      hours: 0
+      minutes: 2
+      seconds: 0
+      milliseconds: 0
+  - condition: state
+    entity_id: binary_sensor.porte_de_garage
+    state: 'on'
+  - action: input_button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_button.bouton_porte_de_garage
+  mode: single
+- id: '1737626729024'
+  alias: Auto - Bureau - Prise Bureau Agnès - Automatiser l'allumage/extinction de
+    la prise
+  description: ''
+  triggers:
+  - trigger: time
+    at: '22:30:00'
+    id: a 22h30
+  - trigger: time
+    at: 07:30:00
+    id: a 7h30
+  - trigger: time
+    at: 09:00:00
+    id: a 9h
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: enter
+    id: Agnes rentre
+  - trigger: zone
+    entity_id: device_tracker.iphone_de_agnes_2
+    zone: zone.home
+    event: leave
+    id: Agnes part
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - a 22h30
+      sequence:
+      - type: turn_off
+        device_id: af36d6de8f2021e79586ac2624d5b7de
+        entity_id: c77ae3535c1ea306bb044add62ba3179
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - a 7h30
+      sequence:
+      - type: turn_on
+        device_id: af36d6de8f2021e79586ac2624d5b7de
+        entity_id: c77ae3535c1ea306bb044add62ba3179
+        domain: switch
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - a 9h
+        - condition: numeric_state
+          entity_id: sensor.prise_bureau_agnes_puissance
+          below: 29.9
+      sequence:
+      - type: turn_off
+        device_id: af36d6de8f2021e79586ac2624d5b7de
+        entity_id: c77ae3535c1ea306bb044add62ba3179
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - Agnes rentre
+      sequence:
+      - type: turn_off
+        device_id: af36d6de8f2021e79586ac2624d5b7de
+        entity_id: c77ae3535c1ea306bb044add62ba3179
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - Agnes part
+      sequence:
+      - type: turn_off
+        device_id: af36d6de8f2021e79586ac2624d5b7de
+        entity_id: c77ae3535c1ea306bb044add62ba3179
+        domain: switch
+  mode: single
+- id: '1737633981398'
+  alias: Auto - Chambre parents - Apple TV - Mettre en route l'Apple TV lors d'un
+    appui long sur l'interrupteur
+  description: ''
+  triggers:
+  - event_type:
+    - deconz_event
+    - zha_event
+    event_data:
+      device_id: 9889704f550783eeb7a0fef44c78ebbb
+    trigger: event
+  conditions:
+  - condition: template
+    value_template: '{%- set trigger_action -%} {%- if integration_id == "zigbee2mqtt"
+      -%} {{ trigger.event.data.new_state.state }} {%- elif integration_id == "deconz"
+      -%} {{ trigger.event.data.event }} {%- elif integration_id == "zha" -%} {{ trigger.event.data.command
+      }} {%- endif -%} {%- endset -%} {{ trigger_action not in ["","None"] }}'
+  actions:
+  - delay:
+      milliseconds: 0
+  - variables:
+      trigger_action: '{%- if integration_id == "zigbee2mqtt" -%} {{ trigger.event.data.new_state.state
+        }} {%- elif integration_id == "deconz" -%} {{ trigger.event.data.event }}
+        {%- elif integration_id == "zha" -%} {{ trigger.event.data.command }} {%-
+        endif -%}'
+      trigger_delta: '{{ (as_timestamp(now()) - ((states(helper_last_controller_event)
+        | from_json).t if helper_last_controller_event is not none and (states(helper_last_controller_event)
+        | regex_match("^\{((\"a\": \".*\"|\"t\": \d+\.\d+)(, )?){2}\}$")) else as_timestamp("1970-01-01
+        00:00:00"))) * 1000 }}'
+  - data:
+      entity_id: input_text.last_smart_button_event
+      value: '{{ {"a":trigger_action,"t":as_timestamp(now())} | to_json }}'
+    action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger_action | string in button_short }}'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ button_double_press }}'
+          sequence:
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ trigger_action | string in states(helper_last_controller_event)
+                  and trigger_delta | int <= helper_double_press_delay | int }}'
+              sequence:
+              - data:
+                  entity_id: input_text.last_smart_button_event
+                  value: '{{ {"a":"double_press","t":as_timestamp(now())} | to_json
+                    }}'
+                action: input_text.set_value
+              - event: ahb_controller_event
+                event_data:
+                  controller: '{{ controller_id }}'
+                  action: button_double
+              - choose:
+                - conditions: []
+                  sequence: []
+            default:
+            - delay:
+                milliseconds: '{{ adjusted_double_press_delay }}'
+            - event: ahb_controller_event
+              event_data:
+                controller: '{{ controller_id }}'
+                action: button_short
+            - choose:
+              - conditions: []
+                sequence: []
+        default:
+        - event: ahb_controller_event
+          event_data:
+            controller: '{{ controller_id }}'
+            action: button_short
+        - choose:
+          - conditions: []
+            sequence: []
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger_action | string in button_long }}'
+      sequence:
+      - event: ahb_controller_event
+        event_data:
+          controller: '{{ controller_id }}'
+          action: button_long
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ button_long_loop }}'
+          sequence:
+          - repeat:
+              while:
+              - condition: template
+                value_template: '{{ repeat.index < button_long_max_loop_repeats |
+                  int }}'
+              sequence:
+              - action: todo.get_items
+                metadata: {}
+                data:
+                  status: needs_action
+        default:
+        - action: cover.close_cover
+          metadata: {}
+          data: {}
+          target:
+            area_id: chambre_des_parents
+        - action: media_player.turn_on
+          metadata: {}
+          data: {}
+          target:
+            area_id: chambre_des_parents
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 30
+            milliseconds: 0
+        - action: light.turn_off
+          metadata: {}
+          data: {}
+          target:
+            area_id: chambre_des_parents
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger_action | string in button_release }}'
+      sequence:
+      - event: ahb_controller_event
+        event_data:
+          controller: '{{ controller_id }}'
+          action: button_release
+      - choose:
+        - conditions: []
+          sequence: []
+  variables:
+    integration: ZHA
+    button_long_loop: false
+    button_long_max_loop_repeats: 500
+    button_double_press: false
+    helper_last_controller_event: input_text.last_smart_button_event
+    helper_double_press_delay: 500
+    helper_debounce_delay: 0
+    integration_id: '{{ integration | lower }}'
+    adjusted_double_press_delay: '{{ [helper_double_press_delay - helper_debounce_delay,
+      100] | max }}'
+    actions_mapping:
+      deconz:
+        button_short:
+        - '1000'
+        button_long:
+        - '1001'
+        button_release:
+        - '1003'
+      zha:
+        button_short:
+        - on_short_release
+        button_long:
+        - on_hold
+        button_release:
+        - on_long_release
+    button_short: '{{ actions_mapping[integration_id]["button_short"] }}'
+    button_long: '{{ actions_mapping[integration_id]["button_long"] }}'
+    button_release: '{{ actions_mapping[integration_id]["button_release"] }}'
+    controller_device: ac8c8824a5af5973b34d051003752d2b
+    controller_id: '{{controller_device}}'
+  mode: restart
+  max_exceeded: silent
+- id: '1737636598514'
+  alias: Notif - Garage - Porte de garage - Prévenir si la porte de garage est ouverte
+    trop longtemps
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.porte_de_garage
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  conditions: []
+  actions:
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      title: Porte de garage
+      message: Attention la porte de garage est ouverte depuis plus de 5 minutes
+  mode: single
+- id: '1737726282862'
+  alias: Auto - Garage - Lumière du garage - Synchro avec l'interrupteur
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - light.interrupteur_mural_lumiere
+    to: 'on'
+    id: allumé
+  - trigger: state
+    entity_id:
+    - light.interrupteur_mural_lumiere
+    to: 'off'
+    id: éteint
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - allumé
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data: {}
+        target:
+          area_id: garage
+    - conditions:
+      - condition: trigger
+        id:
+        - éteint
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          area_id: garage
+  mode: single
+- id: '1738144707204'
+  alias: Auto - Maison - Heure réveil - Définition de l'heure de réveil de la maison
+  description: ''
+  triggers:
+  - trigger: time
+    at: 01:00:00
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ state_attr("calendar.maison","message") == "Weekend"
+            }}'
+        - condition: state
+          entity_id: calendar.maison
+          state: 'on'
+      sequence:
+      - action: input_datetime.set_datetime
+        metadata: {}
+        data:
+          time: 09:30:00
+        target:
+          entity_id: input_datetime.heure_de_reveil_de_la_maison
+      alias: Le weekend
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: calendar.agnes
+          state: 'on'
+        - condition: template
+          value_template: '{{ "non travaillé".lower() in state_attr("calendar.agnes","message").lower()
+            }}'
+      sequence:
+      - action: input_datetime.set_datetime
+        metadata: {}
+        data:
+          time: 09:30:00
+        target:
+          entity_id: input_datetime.heure_de_reveil_de_la_maison
+      alias: Agnès jour non travaillé
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ "non travaillé".lower() in state_attr("calendar.tanguy","message").lower()
+            }}'
+        - condition: state
+          entity_id: calendar.tanguy
+          state: 'on'
+      sequence:
+      - action: input_datetime.set_datetime
+        metadata: {}
+        data:
+          time: 09:30:00
+        target:
+          entity_id: input_datetime.heure_de_reveil_de_la_maison
+      alias: Tanguy jour non travaillé
+    default:
+    - action: input_datetime.set_datetime
+      metadata: {}
+      data:
+        time: 07:00:00
+      target:
+        entity_id: input_datetime.heure_de_reveil_de_la_maison
+  mode: single
+- id: '1738145555399'
+  alias: Auto - Maison - Volets - Gestion des volets basé sur les horaires et le soleil
+  description: ''
+  triggers:
+  - event: sunrise
+    id: soleil
+    trigger: sun
+  - at: input_datetime.heure_de_reveil_de_la_maison
+    id: heure
+    trigger: time
+  conditions:
+  - condition: or
+    conditions:
+    - alias: Déclenché par le soleil après l'heure de réveil de la maison
+      condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - soleil
+      - condition: time
+        after: input_datetime.heure_de_reveil_de_la_maison
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - heure
+      - condition: sun
+        after: sunrise
+      alias: Déclenché à 7h15, et le soleil est déjà levé
+  actions:
+  - data: {}
+    target:
+      entity_id: input_boolean.lumieres_automatiques
+    alias: Désactivation de l'éclairage automatique
+    action: input_boolean.turn_off
+  - data: {}
+    target:
+      area_id:
+      - bureau
+      - chambre_des_parents
+      - cuisine
+      - salle_a_manger
+      - chambre_louis
+      - chambre_maxime
+    action: cover.open_cover
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id:
+      - salon
+      - salle_a_manger
+      - cuisine
+  mode: single
+- id: '1739261458706'
+  alias: Interrupteur - Bureau - Prise bureau Agnès - Utilisation interupteur boulanger
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: zha_event
+    event_data:
+      device_ieee: 70:ac:08:ff:fe:96:43:3f
+      command: 'on'
+    id: 'on'
+  - trigger: event
+    event_type: zha_event
+    event_data:
+      device_ieee: 70:ac:08:ff:fe:96:43:3f
+      command: 'off'
+    id: 'off'
+  - trigger: event
+    event_type: zha_event
+    event_data:
+      device_ieee: 70:ac:08:ff:fe:96:43:3f
+      command: step_color_temp
+    id: double tap
+  conditions: []
+  actions:
+  - if:
+    - condition: trigger
+      id:
+      - 'on'
+      - 'off'
+    then:
+    - action: switch.toggle
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.prise_bureau_agnes_commutateur
+    else:
+    - if:
+      - condition: trigger
+        id:
+        - double tap
+      then:
+      - type: toggle
+        device_id: 030941ec32ca4ecfcb0d34501409a485
+        entity_id: c1d98a595baa62986eccfb711de11cc6
+        domain: light
+  mode: single
+- id: '1739543565644'
+  alias: Auto - Maison - Event - Activation du coucher de la maison
+  description: ''
+  triggers:
+  - event: sunset
+    offset: 00:00
+    trigger: sun
+    id: soleil
+  - at: '22:00'
+    trigger: time
+    id: heure
+  conditions: []
+  actions:
+  - event: coucher_maison
+    event_data:
+      trigger: '{{ trigger.id }}'
+  mode: single
+- id: '1739544177883'
+  alias: Auto - Bureau - Volets - Gestion automatisée du volet
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: coucher_maison
+  conditions: []
+  actions:
+  - action: cover.close_cover
+    metadata: {}
+    data: {}
+    target:
+      area_id: bureau
+  mode: single
+- id: '1739546482324'
+  alias: Auto - Maison - Tempo - Notification couleur du lendemain
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.rte_tempo_prochaine_couleur
+    to: Bleu
+    id: bleu
+  - trigger: state
+    entity_id:
+    - sensor.rte_tempo_prochaine_couleur
+    to: Blanc
+    id: blanc
+  - trigger: state
+    entity_id:
+    - sensor.rte_tempo_prochaine_couleur
+    to: Rouge
+    id: rouge
+  conditions: []
+  actions:
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      message: 'Jour tempo pour demain: {{ trigger.id }}'
+      title: Jour tempo pour demain
+  - action: notify.mobile_app_iphone_de_agnes
+    metadata: {}
+    data:
+      message: 'Jour tempo pour demain: {{ trigger.id }}'
+      title: Jour tempo pour demain
+  mode: single
+- id: '1743692081348'
+  alias: Reboot Live box quand Free.fr est indisponible
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.free_fr
+    - binary_sensor.google_fr
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  conditions:
+  - condition: state
+    entity_id: binary_sensor.free_fr
+    state: 'off'
+  - condition: state
+    entity_id: binary_sensor.google_fr
+    state: 'off'
+  actions:
+  - action: button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: button.livebox_fibre_livebox_restart
+  mode: single
+- id: '1744619112416'
+  alias: Switch - Bureau - Lumière étagère avec bouton
+  description: ''
+  triggers:
+  - device_id: 73f4031281d1269179ce269ee4a8aee8
+    domain: zha
+    type: remote_button_double_press
+    subtype: turn_on
+    trigger: device
+  conditions: []
+  actions:
+  - type: toggle
+    device_id: f133da3711ae2bcd51cc42b0ab21ff04
+    entity_id: 69986ef4ec3fae541cffe7988876b54e
+    domain: light
+  mode: single
+- id: '1751181585095'
+  alias: Global - météo - Changement dans l'indice UV
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.openuv_niveau_uv_actuel
+    from: moderate
+    to: high
+    id: high_uv
+  - trigger: state
+    entity_id:
+    - sensor.openuv_niveau_uv_actuel
+    from: moderate
+    to: low
+    id: low_uv
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - high_uv
+      sequence:
+      - action: notify.mobile_app_iphone_pro_de_tanguy
+        metadata: {}
+        data:
+          title: Indice UV haut !
+          message: 'Attention indice uv important penser à ce protéger '
+      - action: cover.close_cover
+        metadata: {}
+        data: {}
+        target:
+          floor_id: 1er_etage
+          entity_id:
+          - cover.salle_a_manger_petit
+          - cover.cuisine
+    - conditions:
+      - condition: trigger
+        id:
+        - low_uv
+      sequence:
+      - action: notify.mobile_app_iphone_pro_de_tanguy
+        metadata: {}
+        data:
+          title: Indice UV bas !
+          message: Indice UV réduit
+      - action: cover.open_cover
+        metadata: {}
+        data: {}
+        target:
+          floor_id: 1er_etage
+          entity_id:
+          - cover.salle_a_manger_petit
+          - cover.cuisine
+  mode: single
+- id: '1751182910944'
+  alias: Global - Meteo - Mise à jour des capteurs UV
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    minutes: '15'
+  conditions:
+  - condition: sun
+    after: sunrise
+    before: sunset
+    before_offset: +00:45:00
+  - condition: template
+    value_template: "{{\n  state_attr('automation.global_meteo_mise_a_jour_des_capteurs_uv',
+      'last_triggered') == None\n  or (\n    now() - state_attr('automation.global_meteo_mise_a_jour_des_capteurs_uv',
+      'last_triggered')\n  ) >= timedelta(hours = 0, minutes = 40)\n}}"
+  actions:
+  - action: homeassistant.update_entity
+    metadata: {}
+    data:
+      entity_id:
+      - sensor.openuv_indice_uv_actuel
+      - binary_sensor.openuv_fenetre_de_protection
+  mode: single
+- id: '1751186347505'
+  alias: Global - Cast - Afficher la météo sur le nest hub
+  description: ''
+  triggers:
+  - trigger: time
+    at: 07:00:00
+    id: allumage
+  - trigger: time
+    at: 08:15:00
+    id: extinction
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - allumage
+      sequence:
+      - action: cast.show_lovelace_view
+        metadata: {}
+        data:
+          entity_id: media_player.sejour
+          dashboard_path: meteo-wasquehal
+          view_path: cast
+    default:
+    - action: media_player.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: media_player.sejour
+  mode: single
+- id: '1753110473269'
+  alias: Auto - Chambre des parents - Allumage prise chacon
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - light.smart_plug_hue_lumiere
+    to: 'on'
+    id: allumé
+  - trigger: state
+    entity_id:
+    - light.smart_plug_hue_lumiere
+    to: 'off'
+    id: éteint
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - allumé
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: light.prise_chacon_2
+    - conditions:
+      - condition: trigger
+        id:
+        - éteint
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: light.prise_chacon_2
+  mode: single
+- id: '1753453905895'
+  alias: Auto - garage - Allumer la lumière quand la porte s’ouvre
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.porte_de_garage
+    to: 'on'
+  conditions: []
+  actions:
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      area_id: garage
+  mode: single
+- id: '1754039557225'
+  alias: Auto - Maison - Changement heure creuses/heures pleines
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.rte_tempo_heures_creuses
+    from: 'on'
+    to: 'off'
+    id: Heure pleine
+  - trigger: state
+    entity_id:
+    - binary_sensor.rte_tempo_heures_creuses
+    from: 'off'
+    to: 'on'
+    id: Heure creuse
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Heure creuse
+      sequence:
+      - type: turn_on
+        device_id: 041ead59f357f0f8861a9a7a6debbf60
+        entity_id: a842979776e4c90f5bd8d4dfea6fb19e
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - Heure pleine
+      sequence:
+      - type: turn_off
+        device_id: 041ead59f357f0f8861a9a7a6debbf60
+        entity_id: a842979776e4c90f5bd8d4dfea6fb19e
+        domain: switch
+  mode: single
+- id: '1759576739845'
+  alias: Chambre des parents - alerte - Humidité trop importante
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ewelink_snzb_02p_humidite
+    for:
+      hours: 0
+      minutes: 20
+      seconds: 0
+    above: 60
+  conditions: []
+  actions:
+  - action: notify.mobile_app_iphone_de_agnes
+    metadata: {}
+    data:
+      message: 'Humidité dans la chambre des parents trop importante '
+      title: "\U0001F6A8 humidité dans la chambre"
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      message: 'Humidité dans la chambre des parents trop importante '
+      title: "\U0001F6A8 humidité dans la chambre"
+  mode: single
+- id: '1764145635626'
+  alias: Auto - Garage - Couper la prise du PC si non utilisé
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.prise_pc_gaming_puissance
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    below: 1
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.prise_pc_gaming
+  mode: single
+- id: '1765203339880'
+  alias: Auto - Garage - Eteindre l'imprimante 3D si non utilisée
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.prusa_core_one
+    to:
+    - finished
+    for:
+      hours: 0
+      minutes: 20
+      seconds: 0
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: cc3d71cce80dccae6687e99689cea0ee
+    entity_id: ae47c95210cfd39253b20c3097e472a0
+    domain: switch
+  mode: single
+- id: '1765209144683'
+  alias: Auto - Chambre des parents - Eteindre la lumière quand la lecture commence
+  description: ''
+  triggers:
+  - device_id: 0c6e33392863002b69d35e179d5c58fd
+    domain: media_player
+    entity_id: 46ea9972bcca234e8c7eae93d3f42b1e
+    type: playing
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    target:
+      area_id: chambre_des_parents
+    data: {}
+  mode: single
+- id: '1766061694326'
+  alias: Nouvelle automatisation
+  description: ''
+  use_blueprint:
+    path: andrew-codechimp/battery_notes_battery_threshold.yaml
+    input:
+      on_low_actions:
+      - action: notify.mobile_app_iphone_pro_de_tanguy
+        metadata: {}
+        data:
+          message: Battery low on {{ trigger.event.data }}
+- id: '1766397966233'
+  alias: Auto - Maison - Incrémentation compteurs journaliers
+  description: ''
+  triggers:
+  - trigger: time
+    at: 01:00:00
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+    - sun
+  conditions: []
+  actions:
+  - action: counter.increment
+    metadata: {}
+    target:
+      entity_id: counter.jours_sans_aeration
+    data: {}
+  mode: single
+- id: '1766398158749'
+  alias: Auto - Chambre des parents - Réinitialisation compteur jours aération
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.changement_humidite_chambre_des_parents
+    below: -4
+  conditions: []
+  actions:
+  - action: counter.reset
+    metadata: {}
+    target:
+      entity_id: counter.jours_sans_aeration
+    data: {}
+  mode: single
+- id: '1766595380189'
+  alias: Auto - Salon - Eteindre la lumière si on lance une vidéo sur Jellyfin
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - media_player.tv_du_salon_2
+    to:
+    - playing
+    id: lance_lecture
+  - trigger: state
+    entity_id:
+    - media_player.tv_du_salon_2
+    from:
+    - playing
+    id: stop_lecture
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - lance_lecture
+      sequence:
+      - action: automation.turn_off
+        metadata: {}
+        target:
+          entity_id: automation.salon_gestion_de_la_lumiere_avec_capteur_de_presence
+        data:
+          stop_actions: true
+      - action: light.turn_off
+        metadata: {}
+        target:
+          area_id: salon
+        data: {}
+    - conditions:
+      - condition: trigger
+        id:
+        - stop_lecture
+      sequence:
+      - action: automation.turn_on
+        metadata: {}
+        target:
+          entity_id: automation.salon_gestion_de_la_lumiere_avec_capteur_de_presence
+        data: {}
+      - action: light.turn_on
+        metadata: {}
+        target:
+          area_id: salon
+        data: {}
+  mode: single
+- id: '1767091174755'
+  alias: "Auto - Garage - Heures creuses Tempo \U0001F534"
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.rte_tempo_heures_creuses
+    to:
+    - 'on'
+    id: heures_creuses
+    from:
+    - 'off'
+  - trigger: state
+    entity_id:
+    - binary_sensor.rte_tempo_heures_creuses
+    to:
+    - 'off'
+    id: heure_pleines
+    from:
+    - 'on'
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+  - choose:
+    - conditions:
+      - alias: "Passage en HC bleues/blanches/rouges \U0001F535 ⚪️ \U0001F534"
+        condition: and
+        conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state:
+          - Bleu
+          - Blanc
+          - Rouge
+        - condition: trigger
+          id:
+          - heures_creuses
+      sequence:
+      - parallel:
+        - sequence:
+          - action: automation.turn_on
+            metadata: {}
+            target:
+              entity_id:
+              - automation.grenier_automatisation_de_la_vmc
+              - automation.auto_grenier_vmc_reguler_la_vitesse_en_fonction_de_lhumidite
+            data: {}
+          - action: input_select.select_option
+            metadata: {}
+            target:
+              entity_id: input_select.interrupteur_vmc
+            data:
+              option: Vitesse 1
+          alias: Rallumer VMC
+        - parallel:
+          - action: automation.turn_on
+            metadata: {}
+            target:
+              entity_id:
+              - automation.auto_bureau_prise_tanguy_gestion_de_l_allumage_extinction_en_automatique_de_la_prise
+              - automation.auto_bureau_prise_bureau_agnes_automatiser_l_allumage_extinction_de_la_prise
+            data: {}
+          alias: Automatisations prises du bureau
+        - alias: Allumer les serveurs
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            target:
+              entity_id: switch.multiprise_garage_serveurs
+            data: {}
+          - delay:
+              hours: 0
+              minutes: 1
+              seconds: 0
+              milliseconds: 0
+          - action: switch.turn_on
+            metadata: {}
+            target:
+              entity_id:
+              - switch.prise_routeur_cisco_poe
+            data: {}
+          - wait_template: '{{ is_state("sensor.borne_du_bureau_state", "Connected")
+              }}'
+            continue_on_timeout: false
+            timeout: '3600'
+          - action: switch.turn_on
+            metadata: {}
+            target:
+              entity_id: switch.prise_nas_asustor
+            data: {}
+          - wait_template: '{{ is_state("binary_sensor.nas_asustor", "on") }}'
+            continue_on_timeout: true
+          - action: switch.turn_on
+            metadata: {}
+            target:
+              entity_id: switch.prise_serveur_dell_commutateur
+            data: {}
+        - action: switch.turn_on
+          metadata: {}
+          target:
+            label_id: auto_on_jour_rouge
+          data: {}
+      alias: "Passage en HC bleues/blanches/rouges \U0001F535 ⚪️ \U0001F534"
+    - conditions:
+      - alias: "Passage en HP rouge \U0001F534"
+        condition: and
+        conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state:
+          - Rouge
+        - condition: trigger
+          id:
+          - heure_pleines
+      sequence:
+      - parallel:
+        - action: switch.turn_off
+          metadata: {}
+          target:
+            label_id: off_jour_rouge
+          data: {}
+        - alias: Eteindre les serveurs
+          sequence:
+          - action: button.press
+            metadata: {}
+            target:
+              entity_id: button.node_proxmox_pve_shutdown
+            data: {}
+          - wait_template: '{{ is_state("sensor.prise_serveur_dell_courant", "0.0")}}'
+            continue_on_timeout: false
+            timeout: '3600'
+          - action: shell_command.asustor_shutdown
+            metadata: {}
+            data: {}
+          - wait_template: '{{ is_state("sensor.prise_nas_asustor_courant", "0.0")}}'
+            continue_on_timeout: false
+            timeout: '3600'
+          - action: switch.turn_off
+            metadata: {}
+            target:
+              entity_id:
+              - switch.prise_serveur_dell_commutateur
+              - switch.prise_routeur_cisco_poe
+              - switch.prise_nas_asustor
+            data: {}
+        - sequence:
+          - action: automation.turn_off
+            metadata: {}
+            target:
+              entity_id:
+              - automation.auto_grenier_vmc_reguler_la_vitesse_en_fonction_de_lhumidite
+              - automation.grenier_automatisation_de_la_vmc
+            data:
+              stop_actions: true
+          - action: input_select.select_option
+            metadata: {}
+            target:
+              entity_id: input_select.interrupteur_vmc
+            data:
+              option: 'Off'
+          alias: Couper la VMC
+        - parallel:
+          - action: automation.turn_off
+            metadata: {}
+            target:
+              entity_id:
+              - automation.auto_bureau_prise_tanguy_gestion_de_l_allumage_extinction_en_automatique_de_la_prise
+              - automation.auto_bureau_prise_bureau_agnes_automatiser_l_allumage_extinction_de_la_prise
+            data:
+              stop_actions: true
+          alias: Automatisations prises du bureau
+  mode: single

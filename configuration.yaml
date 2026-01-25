@@ -1,0 +1,164 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+homeassistant:
+  external_url: "https://domotique.baudrin.fr"
+  internal_url: "http://10.2.0.2:8123"
+  country: FR
+  customize:
+    cover.cuisine:
+      device_class: shutter
+    cover.salle_a_manger_grand:
+      device_class: shutter
+    cover.salle_a_manger_petit:
+      device_class: shutter
+    cover.salon:
+      device_class: shutter
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 10.0.5.5
+    - 10.0.5.3
+
+template: !include templates.yaml
+input_number: !include input_numbers.yaml
+
+
+logger:
+  default: error
+
+battery_notes:
+
+rflink:
+  port: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_556393131333515090E1-if00
+  
+light:
+- platform: rflink
+  device_defaults:
+    signal_repetitions: 10
+  automatic_add: false
+  devices:
+    newkaku_00000001_1: 
+      name: prise_chacon_1
+    newkaku_00000002_1: 
+      name: prise_chacon_2
+      signal_repetitions: 1
+
+zha:
+  device_config:
+    a4:c1:38:7c:1c:84:87:84-1:
+      type: button
+    a4:c1:38:81:a9:16:e3:94-1:
+      type: switch
+    a4:c1:38:81:a9:16:e3:94-2:
+      type: switch
+    00:17:88:01:0d:d2:99:e5-11:
+      type: light
+    e0:79:8d:ff:fe:b2:76:ba-1:
+      type: switch
+      
+switch:
+  - platform: rflink
+    devices:
+      newkaku_007bfd26_1:
+        name: interupteur_rflink_1
+    automatic_add: false
+  - platform: circadian_lighting
+    lights_brightness:
+      - light.lumiere_cuisine
+      - light.sourcing_creation_eb_e27_st64_cct_fv_lumiere
+      - light.ampoule_boulanger_lumiere
+
+cover:
+- platform: rflink
+  devices:
+    RTS_02FFFF_0: 
+      name: Cuisine
+    RTS_0F010F_0: 
+      name: Salle à manger petit
+    RTS_0F010C_0: 
+      name: Salle à manger grand
+    RTS_0F010B_0: 
+      name: Salon
+      
+sensor:
+  - platform: rest
+    name: Sony Bravia TV Color mode
+    resource_template: !secret bravia_videourl
+    headers:
+      x-auth-psk: !secret bravia_psk
+    method: POST
+    payload: '{"method":"getPictureQualitySettings","params":[{"target":"pictureMode"}],"id":52,"version":"1.0"}'
+    value_template:  >
+      {%- if value_json is defined -%}
+        {{- value_json.result[0][0].currentValue -}}
+      {%- else -%}
+        auto
+      {%- endif -%}
+    json_attributes_path: "result.[0][0]"
+    json_attributes:
+      - candidate
+    scan_interval: 5
+
+rest_command:
+  sony_bravia_tv_input_select_set_options:
+    url: '{{ url }}/services/input_select/set_options'
+    method: POST
+    headers:
+      authorization: 'Bearer {{ token }}'
+      content-type: 'application/json'
+    payload: >-
+      {
+        "entity_id": "input_select.scene_tv_du_salon",
+        "options": [
+      {%- for item in state_attr("sensor.sony_bravia_tv_color_mode", "candidate")|map(attribute="value")|list -%}
+        "{{- item -}}"{% if not loop.last %}, {% endif %}
+      {%- endfor -%}
+        ]
+      }
+  sony_bravia_tv_set_audio_output:
+    url: '{{ url }}/sony/audio'
+    method: POST
+    headers:
+      x-auth-psk: 'abcd'
+      content-type: 'application/json'
+      accept: 'application/json'
+    payload: >-
+      {
+        "method": "setSoundSettings",
+        "id": 5,
+        "params": [{"settings": [{
+            "value": "audioSystem",
+            "target": "outputTerminal"
+        }]}],
+        "version": "1.1"
+      }
+
+shell_command:
+  asustor_shutdown: >-
+    ssh -i /config/.ssh/id_rsa_asustor 
+    -o StrictHostKeyChecking=no 
+    -o ConnectTimeout=10 
+    root@10.0.5.3 
+    "poweroff"
+
+recorder:
+  db_url: !secret recorder_db_url
+  purge_keep_days: 360
+  purge_interval: 1
+
+prometheus:
+
+circadian_lighting:
+  min_colortemp: 5000
+  max_colortemp: 5000
