@@ -1,5 +1,5 @@
 - id: '1699818128381'
-  alias: Global - Routine - Activer « nuit » : lumières auto, volets, alarme
+  alias: "Global - Routine - Activer « nuit » : lumières auto, volets, alarme"
   description: |
     Active, à la tombée de la nuit ou à 22h, les automatismes de lumières, ferme tous les volets de la maison et passe l’alarme en mode nuit pour préparer la maison au coucher. Déclencheurs : coucher du soleil ou 22h. Actions : active input_boolean.lumieres_automatiques, ferme les volets des chambres et pièces communes, arme Arlo en mode nuit. (Migré le 2026-01-25)
   trigger:
