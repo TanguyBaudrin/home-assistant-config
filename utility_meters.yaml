@@ -1,0 +1,311 @@
+# Utility meters for energy consumption and cost tracking per device
+# Excludes Linky devices as requested
+# Each meter tracks consumption by tariff period (Bleu/Blanc/Rouge × HC/HP)
+
+# ============================================
+# Box Internet
+# ============================================
+box_internet_energy:
+  source: sensor.box_internet_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Machine à laver
+# ============================================
+machine_a_laver_energy:
+  source: sensor.machine_a_laver_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Multiprise garage serveurs
+# ============================================
+multiprise_garage_serveurs_energy:
+  source: sensor.multiprise_garage_serveurs_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Multiprise sol
+# ============================================
+multiprise_sol_energy:
+  source: sensor.multiprise_sol_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise bureau Agnès
+# ============================================
+prise_bureau_agnes_energy:
+  source: sensor.prise_bureau_agnes_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise bureau Tanguy
+# ============================================
+prise_bureau_tanguy_energy:
+  source: sensor.prise_bureau_tanguy_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise congelateur
+# ============================================
+prise_congelateur_energy:
+  source: sensor.prise_congelateur_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise électrique tv
+# ============================================
+prise_electrique_tv_energy:
+  source: sensor.prise_electrique_tv_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise imprimante 3d
+# ============================================
+prise_imprimante_3d_energy:
+  source: sensor.prise_imprimante_3d_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise mansarde
+# ============================================
+prise_mansarde_energy:
+  source: sensor.prise_mansarde_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise Nas Asustor
+# ============================================
+prise_nas_asustor_energy:
+  source: sensor.prise_nas_asustor_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise Nest hub
+# ============================================
+prise_nest_hub_energy:
+  source: sensor.prise_nest_hub_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise ninja
+# ============================================
+prise_ninja_energy:
+  source: sensor.prise_ninja_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise PC Gaming
+# ============================================
+prise_pc_gaming_energy:
+  source: sensor.prise_pc_gaming_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise routeur Cisco + PoE
+# ============================================
+prise_routeur_cisco_poe_energy:
+  source: sensor.prise_routeur_cisco_poe_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise serveur Dell
+# ============================================
+prise_serveur_dell_energy:
+  source: sensor.prise_serveur_dell_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise USB Raspberry
+# ============================================
+prise_usb_raspberry_energy:
+  source: sensor.prise_usb_raspberry_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Prise vélo électrique
+# ============================================
+prise_velo_electrique_energy:
+  source: sensor.multiprise_garage_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Routeur
+# ============================================
+routeur_energy:
+  source: sensor.routeur_consommation
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Séche linge
+# ============================================
+seche_linge_energy:
+  source: sensor.tz3000_2putqrmw_ts011f_consommation_2
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Four (Shelly EM)
+# ============================================
+four_energy:
+  source: sensor.shellyem_ec64c9c06bbb_channel_1_energy
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp
+
+# ============================================
+# Plaques (Shelly EM)
+# ============================================
+plaques_energy:
+  source: sensor.shellyem_ec64c9c06bbb_channel_2_energy
+  cycle: daily
+  tariffs:
+    - bleu_hc
+    - bleu_hp
+    - blanc_hc
+    - blanc_hp
+    - rouge_hc
+    - rouge_hp

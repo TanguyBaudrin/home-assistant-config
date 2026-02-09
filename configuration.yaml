@@ -32,6 +32,7 @@ http:
 
 template: !include templates.yaml
 input_number: !include input_numbers.yaml
+utility_meter: !include utility_meters.yaml
 
 
 logger:

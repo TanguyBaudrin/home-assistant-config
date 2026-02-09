@@ -90,3 +90,359 @@
             0
           {%- endif %}
         {%- endif %}
+
+- unique_id: "device_costs"
+  sensor:
+    # ============================================
+    # Box internet Cost
+    # ============================================
+    - name: "Box internet Cost"
+      unique_id: "box_internet_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.box_internet_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.box_internet_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.box_internet_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.box_internet_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.box_internet_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.box_internet_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+      availability: >
+        {{ not 'unavailable' in [states('sensor.box_internet_energy_bleu_hc')] }}
+
+    # ============================================
+    # Machine à laver Cost
+    # ============================================
+    - name: "Machine a laver Cost"
+      unique_id: "machine_a_laver_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.machine_a_laver_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.machine_a_laver_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.machine_a_laver_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.machine_a_laver_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.machine_a_laver_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.machine_a_laver_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Multiprise garage serveurs Cost
+    # ============================================
+    - name: "Multiprise garage serveurs Cost"
+      unique_id: "multiprise_garage_serveurs_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.multiprise_garage_serveurs_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.multiprise_garage_serveurs_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.multiprise_garage_serveurs_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.multiprise_garage_serveurs_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.multiprise_garage_serveurs_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.multiprise_garage_serveurs_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Multiprise sol Cost
+    # ============================================
+    - name: "Multiprise sol Cost"
+      unique_id: "multiprise_sol_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.multiprise_sol_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.multiprise_sol_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.multiprise_sol_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.multiprise_sol_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.multiprise_sol_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.multiprise_sol_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise bureau Agnès Cost
+    # ============================================
+    - name: "Prise bureau Agnes Cost"
+      unique_id: "prise_bureau_agnes_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_bureau_agnes_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_bureau_agnes_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_bureau_agnes_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_bureau_agnes_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_bureau_agnes_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_bureau_agnes_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise bureau Tanguy Cost
+    # ============================================
+    - name: "Prise bureau Tanguy Cost"
+      unique_id: "prise_bureau_tanguy_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_bureau_tanguy_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_bureau_tanguy_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_bureau_tanguy_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_bureau_tanguy_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_bureau_tanguy_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_bureau_tanguy_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise congelateur Cost
+    # ============================================
+    - name: "Prise congelateur Cost"
+      unique_id: "prise_congelateur_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_congelateur_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_congelateur_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_congelateur_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_congelateur_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_congelateur_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_congelateur_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise électrique tv Cost
+    # ============================================
+    - name: "Prise electrique tv Cost"
+      unique_id: "prise_electrique_tv_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_electrique_tv_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_electrique_tv_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_electrique_tv_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_electrique_tv_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_electrique_tv_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_electrique_tv_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise imprimante 3d Cost
+    # ============================================
+    - name: "Prise imprimante 3d Cost"
+      unique_id: "prise_imprimante_3d_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_imprimante_3d_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_imprimante_3d_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_imprimante_3d_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_imprimante_3d_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_imprimante_3d_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_imprimante_3d_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise mansarde Cost
+    # ============================================
+    - name: "Prise mansarde Cost"
+      unique_id: "prise_mansarde_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_mansarde_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_mansarde_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_mansarde_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_mansarde_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_mansarde_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_mansarde_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise Nas Asustor Cost
+    # ============================================
+    - name: "Prise nas asustor Cost"
+      unique_id: "prise_nas_asustor_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_nas_asustor_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_nas_asustor_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_nas_asustor_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_nas_asustor_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_nas_asustor_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_nas_asustor_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise Nest hub Cost
+    # ============================================
+    - name: "Prise nest hub Cost"
+      unique_id: "prise_nest_hub_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_nest_hub_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_nest_hub_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_nest_hub_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_nest_hub_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_nest_hub_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_nest_hub_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise ninja Cost
+    # ============================================
+    - name: "Prise ninja Cost"
+      unique_id: "prise_ninja_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_ninja_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_ninja_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_ninja_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_ninja_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_ninja_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_ninja_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise PC Gaming Cost
+    # ============================================
+    - name: "Prise pc gaming Cost"
+      unique_id: "prise_pc_gaming_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_pc_gaming_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_pc_gaming_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_pc_gaming_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_pc_gaming_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_pc_gaming_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_pc_gaming_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise routeur Cisco + PoE Cost
+    # ============================================
+    - name: "Prise routeur cisco poe Cost"
+      unique_id: "prise_routeur_cisco_poe_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_routeur_cisco_poe_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_routeur_cisco_poe_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_routeur_cisco_poe_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_routeur_cisco_poe_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_routeur_cisco_poe_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_routeur_cisco_poe_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise serveur Dell Cost
+    # ============================================
+    - name: "Prise serveur dell Cost"
+      unique_id: "prise_serveur_dell_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_serveur_dell_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_serveur_dell_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_serveur_dell_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_serveur_dell_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_serveur_dell_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_serveur_dell_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise USB Raspberry Cost
+    # ============================================
+    - name: "Prise usb raspberry Cost"
+      unique_id: "prise_usb_raspberry_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_usb_raspberry_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_usb_raspberry_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_usb_raspberry_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_usb_raspberry_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_usb_raspberry_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_usb_raspberry_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Prise vélo électrique Cost
+    # ============================================
+    - name: "Prise velo electrique Cost"
+      unique_id: "prise_velo_electrique_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.prise_velo_electrique_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.prise_velo_electrique_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.prise_velo_electrique_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.prise_velo_electrique_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.prise_velo_electrique_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.prise_velo_electrique_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Routeur Cost
+    # ============================================
+    - name: "Routeur Cost"
+      unique_id: "routeur_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.routeur_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.routeur_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.routeur_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.routeur_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.routeur_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.routeur_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Séche linge Cost
+    # ============================================
+    - name: "Seche linge Cost"
+      unique_id: "seche_linge_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.seche_linge_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.seche_linge_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.seche_linge_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.seche_linge_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.seche_linge_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.seche_linge_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Four Cost (Shelly EM)
+    # ============================================
+    - name: "Four Cost"
+      unique_id: "four_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.four_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.four_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.four_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.four_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.four_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.four_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+    # ============================================
+    # Plaques Cost (Shelly EM)
+    # ============================================
+    - name: "Plaques Cost"
+      unique_id: "plaques_cost"
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state: >
+        {% set bh = states('sensor.plaques_energy_bleu_hc') | float(0) * states('input_number.tarif_edf_tempo_bleu_hc') | float(0) %}
+        {% set bhp = states('sensor.plaques_energy_bleu_hp') | float(0) * states('input_number.tarif_edf_tempo_bleu_hp') | float(0) %}
+        {% set blh = states('sensor.plaques_energy_blanc_hc') | float(0) * states('input_number.tarif_edf_tempo_blanc_hc') | float(0) %}
+        {% set blhp = states('sensor.plaques_energy_blanc_hp') | float(0) * states('input_number.tarif_edf_tempo_blanc_hp') | float(0) %}
+        {% set rh = states('sensor.plaques_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
+        {% set rhp = states('sensor.plaques_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
+        {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
