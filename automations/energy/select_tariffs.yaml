@@ -45,9 +45,9 @@
           - four_energy
           - plaques_energy
         sequence:
-          - service: utility_meter.select_tariff
+          - action: select.select_option
             target:
-              entity_id: "utility_meter.{{ repeat.item }}"
+              entity_id: "select.{{ repeat.item }}"
             data:
-              tariff: "{{ tariff }}"
+              option: "{{ tariff }}"
   mode: restart
