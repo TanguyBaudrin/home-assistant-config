@@ -1,0 +1,123 @@
+- id: 'auto_bureau_prise_tanguy_off_when_unused'
+  alias: "Bureau - Prise Tanguy - Extinction automatique quand non utilisée"
+  description: |
+    Éteint automatiquement la prise du bureau de Tanguy lorsqu'il quitte la maison
+    ou à 23h00 pour éviter une consommation inutile. 
+    - Si consommation < 20W (veille): éteint directement
+    - Si consommation 20-50W (utilisation légère): demande confirmation par notification
+    - Si consommation > 50W (utilisation active): ne fait rien
+    Basé sur l'analyse: veille ~16W, utilisation légère 20-40W, utilisation active 90-110W.
+  trigger:
+    - platform: zone
+      entity_id: person.tanguy_baudrin
+      zone: zone.home
+      event: leave
+      id: tanguy_part
+    - platform: time
+      at: '23:00:00'
+      id: soir
+  condition:
+    - alias: "La prise est allumée"
+      condition: state
+      entity_id: switch.prise_bureau_tanguy_commutateur
+      state: 'on'
+  action:
+    - alias: "Déterminer le niveau de consommation"
+      variables:
+        power_sensor: "sensor.prise_bureau_tanguy_puissance"
+        alt_sensor: "sensor.prise_bureau_tanguy_power"
+        power: "{{ states(power_sensor) }}"
+        alt_power: "{{ states(alt_sensor) }}"
+        current_power: >-
+          {% if power not in ['unknown', 'unavailable', None] %}
+            {{ power | float(999) }}
+          {% elif alt_power not in ['unknown', 'unavailable', None] %}
+            {{ alt_power | float(999) }}
+          {% else %}
+            0
+          {% endif %}
+        action_confirm: "{{ 'CONFIRM_PLUG_' ~ context.id }}"
+        action_dismiss: "{{ 'DISMISS_PLUG_' ~ context.id }}"
+    - alias: "Gestion selon le niveau de consommation"
+      choose:
+        - conditions:
+            - alias: "Consommation élevée - appareil en cours d'utilisation (> 50W)"
+              condition: template
+              value_template: "{{ current_power > 50 }}"
+          sequence:
+            - alias: "Ne rien faire - appareil en cours d'utilisation"
+              stop: "Consommation trop élevée ({{ current_power }}W) - appareil probablement en cours d'utilisation"
+        - conditions:
+            - alias: "Consommation modérée - demander confirmation (20-50W)"
+              condition: template
+              value_template: "{{ current_power >= 20 and current_power <= 50 }}"
+          sequence:
+            - alias: "Envoyer notification de confirmation"
+              service: notify.mobile_app_iphone_pro_de_tanguy
+              data:
+                title: "Éteindre la prise bureau ?"
+                message: "La consommation est de {{ current_power | round(1) }}W. Voulez-vous éteindre la prise du bureau ?"
+                data:
+                  actions:
+                    - action: "{{ action_confirm }}"
+                      title: "Oui, éteindre"
+                    - action: "{{ action_dismiss }}"
+                      title: "Non, garder allumé"
+                  tag: "plug_tanguy_{{ context.id }}"
+            - alias: "Attendre la réponse (2 minutes max)"
+              wait_for_trigger:
+                - platform: event
+                  event_type: mobile_app_notification_action
+                  event_data:
+                    action: "{{ action_confirm }}"
+                - platform: event
+                  event_type: mobile_app_notification_action
+                  event_data:
+                    action: "{{ action_dismiss }}"
+              timeout: "00:02:00"
+              continue_on_timeout: true
+            - alias: "Vérifier la réponse ou le timeout"
+              choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_confirm }}"
+                  sequence:
+                    - alias: "Éteindre la prise après confirmation"
+                      service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_tanguy_commutateur
+                    - alias: "Notification de confirmation"
+                      service: notify.mobile_app_iphone_pro_de_tanguy
+                      data:
+                        title: "Prise éteinte"
+                        message: "La prise du bureau a été éteinte ({{ current_power | round(1) }}W)."
+                        data:
+                          tag: "plug_tanguy_{{ context.id }}"
+                  default:
+                    - alias: "Action annulée ou timeout"
+                      service: notify.mobile_app_iphone_pro_de_tanguy
+                      data:
+                        title: "Prise conservée"
+                        message: "La prise du bureau reste allumée ({{ current_power | round(1) }}W)."
+                        data:
+                          tag: "plug_tanguy_{{ context.id }}"
+        - conditions:
+            - alias: "Consommation faible - veille (< 20W)"
+              condition: template
+              value_template: "{{ current_power < 20 }}"
+          sequence:
+            - alias: "Éteindre la prise directement"
+              service: switch.turn_off
+              target:
+                entity_id: switch.prise_bureau_tanguy_commutateur
+            - alias: "Notification d'extinction automatique"
+              service: notify.mobile_app_iphone_pro_de_tanguy
+              data:
+                title: "Prise bureau éteinte"
+                message: "La prise du bureau a été éteinte automatiquement (mode veille: {{ current_power | round(1) }}W)."
+      default:
+        - alias: "Cas par défaut - éteindre"
+          service: switch.turn_off
+          target:
+            entity_id: switch.prise_bureau_tanguy_commutateur
+  mode: single
