@@ -56,7 +56,7 @@
               service: notify.mobile_app_iphone_pro_de_tanguy
               data:
                 title: "Éteindre la prise bureau ?"
-                message: "La consommation est de {{ current_power | round(1) }}W. Voulez-vous éteindre la prise du bureau ?"
+                message: "La consommation est de {{ current_power | round(1) }}W. Faites un appui long sur cette notification pour voir les options."
                 data:
                   actions:
                     - action: "{{ action_confirm }}"
