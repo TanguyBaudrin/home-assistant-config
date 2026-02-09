@@ -19,3 +19,6 @@ zigbee*
 secrets.yaml
 
 opencode.json
+
+# Mise local configuration (contains secrets)
+mise.local.toml

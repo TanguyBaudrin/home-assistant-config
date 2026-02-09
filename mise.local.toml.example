@@ -1,0 +1,17 @@
+# Local mise configuration - DO NOT COMMIT TO GIT
+# This file stores sensitive environment variables specific to your local setup
+# Copy this file to mise.local.toml and fill in your actual values
+
+[env]
+# Your Home Assistant instance URL
+HASS_SERVER = "http://your-ha-instance:8123"
+
+# Your Long-Lived Access Token from Home Assistant
+# Generate at: YOUR_HA_URL/profile > Long-Lived Access Tokens
+HASS_TOKEN = "your_token_here"
+
+# Optional: Custom timeout for operations
+# HASS_TIMEOUT = "30"
+
+# Optional: Debug logging
+# HASS_LOG_LEVEL = "INFO"

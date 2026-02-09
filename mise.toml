@@ -1,0 +1,64 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+# Home Assistant CLI mise configuration
+# This file configures the development environment for Home Assistant CLI
+
+[env]
+# Home Assistant CLI Environment Variables
+# These are required for hass-cli to connect to your Home Assistant instance
+# See: https://github.com/home-assistant-ecosystem/home-assistant-cli
+
+# Server URL - change this to your Home Assistant instance URL
+HASS_SERVER = "http://homeassistant.local:8123"
+
+# Authentication token - generate this in your HA profile page
+# Go to: http://YOUR_HA_URL/profile > Long-Lived Access Tokens
+# IMPORTANT: Use mise.local.toml or environment secrets for actual tokens
+# HASS_TOKEN = ""
+
+# Optional: Increase log level for debugging
+# HASS_LOG_LEVEL = "DEBUG"
+
+# Optional: Set timeout for operations (in seconds)
+# HASS_TIMEOUT = "10"
+
+[tools]
+# Home Assistant CLI - command line tool for Home Assistant
+# Installed via pipx for isolation
+"pipx:homeassistant-cli" = "latest"
+
+# Additional useful tools for HA development
+yamllint = "latest"
+pre-commit = "latest"
+
+[tasks.validate]
+description = "Validate Home Assistant configuration files"
+run = """
+echo "Validating Home Assistant configuration..."
+yamllint --strict .
+echo "✓ Configuration validation complete"
+"""
+
+[tasks.ha-info]
+description = "Get Home Assistant instance information"
+run = "hass-cli info"
+
+[tasks.ha-status]
+description = "Check Home Assistant entity states"
+run = "hass-cli state list"
+
+[tasks.ha-logs]
+description = "Stream Home Assistant logs"
+run = "hass-cli event watch"
+
+[settings]
+# Automatically answer yes to prompts
+yes = false
+
+# Number of parallel jobs for tool installation
+jobs = 4
+
+# Show tools and env when entering directory
+status.missing_tools = "if_other_versions_installed"
+status.show_env = false
+status.show_tools = true
