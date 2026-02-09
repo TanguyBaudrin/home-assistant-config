@@ -1,53 +1,53 @@
-alias: "Energy Cost - Select Tariffs for All Devices"
-description: >
-  Automatically selects the appropriate tariff for all energy utility meters
-  based on the current EDF Tempo color and Heures Creuses/Heures Pleines status.
-  This ensures accurate cost tracking per tariff period.
-trigger:
-  - platform: state
-    entity_id: sensor.rte_tempo_couleur_actuelle
-  - platform: state
-    entity_id: binary_sensor.rte_tempo_heures_creuses
-  - platform: homeassistant
-    event: start
-action:
-  - variables:
-      tempo_color: "{{ states('sensor.rte_tempo_couleur_actuelle') }}"
-      is_hc: "{{ is_state('binary_sensor.rte_tempo_heures_creuses', 'on') }}"
-      tariff: >
-        {% set color_map = {'Bleu': 'bleu', 'Blanc': 'blanc', 'Rouge': 'rouge'} %}
-        {% set color = color_map.get(tempo_color, 'bleu') %}
-        {% set suffix = 'hc' if is_hc else 'hp' %}
-        {{ color }}_{{ suffix }}
-      
-  - repeat:
-      for_each:
-        - box_internet_energy
-        - machine_a_laver_energy
-        - multiprise_garage_serveurs_energy
-        - multiprise_sol_energy
-        - prise_bureau_agnes_energy
-        - prise_bureau_tanguy_energy
-        - prise_congelateur_energy
-        - prise_electrique_tv_energy
-        - prise_imprimante_3d_energy
-        - prise_mansarde_energy
-        - prise_nas_asustor_energy
-        - prise_nest_hub_energy
-        - prise_ninja_energy
-        - prise_pc_gaming_energy
-        - prise_routeur_cisco_poe_energy
-        - prise_serveur_dell_energy
-        - prise_usb_raspberry_energy
-        - prise_velo_electrique_energy
-        - routeur_energy
-        - seche_linge_energy
-        - four_energy
-        - plaques_energy
-      sequence:
-        - service: utility_meter.select_tariff
-          target:
-            entity_id: "utility_meter.{{ repeat.item }}"
-          data:
-            tariff: "{{ tariff }}"
-mode: restart
+- id: energy_cost_select_tariffs
+  alias: "Energy Cost - Select Tariffs for All Devices"
+  description: >
+    Automatically selects the appropriate tariff for all energy utility meters
+    based on the current EDF Tempo color and Heures Creuses/Heures Pleines status.
+    This ensures accurate cost tracking per tariff period.
+  trigger:
+    - platform: state
+      entity_id: sensor.rte_tempo_couleur_actuelle
+    - platform: state
+      entity_id: binary_sensor.rte_tempo_heures_creuses
+    - platform: homeassistant
+      event: start
+  action:
+    - variables:
+        tempo_color: "{{ states('sensor.rte_tempo_couleur_actuelle') }}"
+        is_hc: "{{ is_state('binary_sensor.rte_tempo_heures_creuses', 'on') }}"
+        tariff: >
+          {% set color_map = {'Bleu': 'bleu', 'Blanc': 'blanc', 'Rouge': 'rouge'} %}
+          {% set color = color_map.get(tempo_color, 'bleu') %}
+          {% set suffix = 'hc' if is_hc else 'hp' %}
+          {{ color }}_{{ suffix }}
+    - repeat:
+        for_each:
+          - box_internet_energy
+          - machine_a_laver_energy
+          - multiprise_garage_serveurs_energy
+          - multiprise_sol_energy
+          - prise_bureau_agnes_energy
+          - prise_bureau_tanguy_energy
+          - prise_congelateur_energy
+          - prise_electrique_tv_energy
+          - prise_imprimante_3d_energy
+          - prise_mansarde_energy
+          - prise_nas_asustor_energy
+          - prise_nest_hub_energy
+          - prise_ninja_energy
+          - prise_pc_gaming_energy
+          - prise_routeur_cisco_poe_energy
+          - prise_serveur_dell_energy
+          - prise_usb_raspberry_energy
+          - prise_velo_electrique_energy
+          - routeur_energy
+          - seche_linge_energy
+          - four_energy
+          - plaques_energy
+        sequence:
+          - service: utility_meter.select_tariff
+            target:
+              entity_id: "utility_meter.{{ repeat.item }}"
+            data:
+              tariff: "{{ tariff }}"
+  mode: restart
