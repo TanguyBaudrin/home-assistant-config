@@ -76,31 +76,30 @@
                     action: "{{ action_dismiss }}"
               timeout: "00:02:00"
               continue_on_timeout: true
-            - alias: "Vérifier la réponse ou le timeout"
-              choose:
-                - conditions:
-                    - condition: template
-                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_confirm }}"
-                  sequence:
-                    - alias: "Éteindre la prise après confirmation"
-                      service: switch.turn_off
-                      target:
-                        entity_id: switch.prise_bureau_tanguy_commutateur
-                    - alias: "Notification de confirmation"
-                      service: notify.mobile_app_iphone_pro_de_tanguy
-                      data:
-                        title: "Prise éteinte"
-                        message: "La prise du bureau a été éteinte ({{ current_power | round(1) }}W)."
-                        data:
-                          tag: "plug_tanguy_{{ context.id }}"
-                  default:
-                    - alias: "Action annulée ou timeout"
-                      service: notify.mobile_app_iphone_pro_de_tanguy
-                      data:
-                        title: "Prise conservée"
-                        message: "La prise du bureau reste allumée ({{ current_power | round(1) }}W)."
-                        data:
-                          tag: "plug_tanguy_{{ context.id }}"
+            - alias: "Vérifier si confirmation reçue et éteindre"
+              if:
+                - condition: template
+                  value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_confirm }}"
+              then:
+                - alias: "Éteindre la prise après confirmation"
+                  service: switch.turn_off
+                  target:
+                    entity_id: switch.prise_bureau_tanguy_commutateur
+                - alias: "Notification de confirmation"
+                  service: notify.mobile_app_iphone_pro_de_tanguy
+                  data:
+                    title: "Prise éteinte"
+                    message: "La prise du bureau a été éteinte ({{ current_power | round(1) }}W)."
+                    data:
+                      tag: "plug_tanguy_{{ context.id }}"
+              else:
+                - alias: "Action annulée ou timeout"
+                  service: notify.mobile_app_iphone_pro_de_tanguy
+                  data:
+                    title: "Prise conservée"
+                    message: "La prise du bureau reste allumée ({{ current_power | round(1) }}W)."
+                    data:
+                      tag: "plug_tanguy_{{ context.id }}"
         - conditions:
             - alias: "Consommation faible - veille (< 20W)"
               condition: template
