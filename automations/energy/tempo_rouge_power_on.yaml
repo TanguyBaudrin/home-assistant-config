@@ -1,0 +1,88 @@
+- id: energy_tempo_rouge_power_on_sequence
+  alias: "Energy - Tempo Rouge - Séquence d'allumage serveurs"
+  description: >
+    Déclenche l'allumage séquentiel des serveurs (Cisco → NAS → Dell) lors du
+    passage en Heures Creuses les jours Tempo Rouge. Envoie une notification
+    si un appareil ne démarre pas dans le temps imparti (10 min).
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.rte_tempo_heures_creuses
+      to: "on"
+      id: heures_creuses_on
+  condition:
+    - condition: state
+      entity_id: sensor.rte_tempo_couleur_actuelle
+      state: "Rouge"
+  action:
+    - alias: "Étape 1: Allumer le routeur Cisco"
+      action: switch.turn_on
+      target:
+        entity_id: switch.prise_routeur_cisco_poe
+
+    - alias: "Attendre la connectivité réseau (Cisco)"
+      wait_template: >
+        {{ is_state('sensor.borne_du_bureau_state', 'Connected') or
+           is_state('sensor.borne_du_salon_state', 'Connected') }}
+      continue_on_timeout: false
+      timeout:
+        minutes: 10
+
+    - alias: "Vérifier si le routeur Cisco a démarré"
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ wait.completed == false }}"
+          sequence:
+            - alias: "Notification: Échec du démarrage du routeur Cisco"
+              action: notify.mobile_app_iphone_pro_de_tanguy
+              data:
+                title: "⚠️ Tempo Rouge - Problème serveur"
+                message: >
+                  Le routeur Cisco n'est pas connecté après 10 minutes.
+                  Veuillez vérifier manuellement l'état du routeur.
+            - alias: "Arrêter l'automation"
+              stop: "Arrêt suite à l'échec du démarrage du routeur Cisco"
+
+    - alias: "Étape 2: Allumer le NAS Asustor"
+      action: switch.turn_on
+      target:
+        entity_id: switch.prise_nas_asustor
+
+    - alias: "Attendre le démarrage du NAS"
+      wait_template: '{{ is_state("binary_sensor.nas_asustor", "on") }}'
+      continue_on_timeout: false
+      timeout:
+        minutes: 10
+
+    - alias: "Vérifier si le NAS a démarré"
+      choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ wait.completed == false }}"
+          sequence:
+            - alias: "Notification: Échec du démarrage du NAS"
+              action: notify.mobile_app_iphone_pro_de_tanguy
+              data:
+                title: "⚠️ Tempo Rouge - Problème serveur"
+                message: >
+                  Le NAS Asustor n'est pas en ligne après 10 minutes.
+                  Veuillez vérifier manuellement l'état du NAS.
+            - alias: "Arrêter l'automation"
+              stop: "Arrêt suite à l'échec du démarrage du NAS Asustor"
+
+    - alias: "Étape 3: Allumer le serveur Dell"
+      action: switch.turn_on
+      target:
+        entity_id: switch.prise_serveur_dell_commutateur
+
+    - alias: "Confirmation: Séquence d'allumage terminée"
+      action: notify.mobile_app_iphone_pro_de_tanguy
+      data:
+        title: "✅ Tempo Rouge - Serveurs démarrés"
+        message: >
+          Tous les serveurs sont en cours de démarrage :
+          - Routeur Cisco: OK
+          - NAS Asustor: OK
+          - Serveur Dell: en cours...
+
+  mode: single
