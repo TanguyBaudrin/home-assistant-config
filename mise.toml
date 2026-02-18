@@ -51,6 +51,10 @@ run = "hass-cli state list"
 description = "Stream Home Assistant logs"
 run = "hass-cli event watch"
 
+[tasks.ha-check]
+description = "Check Home Assistant configuration files"
+run = "docker run -it --rm -v $(pwd):/config ghcr.io/home-assistant/home-assistant:stable -- python -m homeassistant --script check_config --config /config"
+
 [settings]
 # Automatically answer yes to prompts
 yes = false

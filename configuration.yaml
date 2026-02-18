@@ -34,6 +34,8 @@ template: !include templates.yaml
 input_number: !include input_numbers.yaml
 utility_meter: !include utility_meters.yaml
 
+input_datetime: !include input_datetime.yaml
+
 
 logger:
   default: error

@@ -1,0 +1,11 @@
+heure_de_reveil_de_la_maison:
+  name: Heure de réveil de la maison
+  has_date: false
+  has_time: true
+  icon: mdi:clock-outline
+
+matin_failsafe_heure:
+  name: Morning failsafe time
+  has_date: false
+  has_time: true
+  icon: mdi:clock-alert-outline
