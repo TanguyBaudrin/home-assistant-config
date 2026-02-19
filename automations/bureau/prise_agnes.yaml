@@ -1,122 +1,167 @@
-- id: 'auto_bureau_prise_agnes_off_when_unused'
-  alias: "Bureau - Prise Agnès - Extinction automatique quand non utilisée"
+- id: 'auto_bureau_prise_agnes_monitoring'
+  alias: "Bureau - Prise Agnès - Surveillance consommation"
   description: |
-    Éteint automatiquement la prise du bureau d'Agnès lorsqu'elle quitte la maison
-    ou à 23h00 pour éviter une consommation inutile.
-    - Si consommation < 50W (veille): éteint directement
-    - Si consommation 50-180W (utilisation légère): demande confirmation par notification
-    - Si consommation > 180W (utilisation active): ne fait rien
-    Basé sur l'analyse historique: veille ~60W (idle), utilisation modérée 60-180W, utilisation active 180-400W.
+    Surveille en continu la consommation de la prise du bureau d'Agnès.
+    - Si consommation < 20W pendant 15min : extinction automatique
+    - Si consommation entre 20-80W pendant 60min : demande confirmation
+    - Si consommation > 80W : aucune action
+    - Si Agnès quitte la maison : demande si elle veut maintenir la prise allumée
+    Mode restart pour gérer les changements d'état pendant les attentes.
+  mode: restart
   trigger:
-    - platform: zone
+    - id: auto_off_low
+      platform: numeric_state
+      entity_id: sensor.prise_bureau_agnes_puissance
+      below: 20
+      for: "00:15:00"
+    - id: confirm_medium
+      platform: numeric_state
+      entity_id: sensor.prise_bureau_agnes_puissance
+      above: 20
+      below: 80
+      for: "01:00:00"
+    - id: agnes_leaves
+      platform: zone
       entity_id: person.agnes
       zone: zone.home
       event: leave
-      id: agnes_part
-    - platform: time
-      at: '23:00:00'
-      id: soir
   condition:
-    - alias: "La prise est allumée"
-      condition: state
+    - condition: state
       entity_id: switch.prise_bureau_agnes_commutateur
       state: 'on'
   action:
-    - alias: "Déterminer le niveau de consommation"
-      variables:
-        power_sensor: "sensor.prise_bureau_agnes_puissance"
-        alt_sensor: "sensor.prise_bureau_agnes_power"
-        power: "{{ states(power_sensor) }}"
-        alt_power: "{{ states(alt_sensor) }}"
-        current_power: >-
-          {% if power not in ['unknown', 'unavailable', None] %}
-            {{ power | float(999) }}
-          {% elif alt_power not in ['unknown', 'unavailable', None] %}
-            {{ alt_power | float(999) }}
-          {% else %}
-            0
-          {% endif %}
-        action_confirm: "{{ 'CONFIRM_PLUG_' ~ context.id }}"
-        action_dismiss: "{{ 'DISMISS_PLUG_' ~ context.id }}"
-    - alias: "Gestion selon le niveau de consommation"
-      choose:
+    - choose:
         - conditions:
-            - alias: "Consommation élevée - appareil en cours d'utilisation (> 180W)"
-              condition: template
-              value_template: "{{ current_power > 180 }}"
+            - condition: trigger
+              id: auto_off_low
           sequence:
-            - alias: "Ne rien faire - appareil en cours d'utilisation"
-              stop: "Consommation trop élevée ({{ current_power }}W) - appareil probablement en cours d'utilisation"
-        - conditions:
-            - alias: "Consommation modérée - demander confirmation (50-180W)"
-              condition: template
-              value_template: "{{ current_power >= 50 and current_power <= 180 }}"
-          sequence:
-            - alias: "Envoyer notification de confirmation"
-              service: notify.mobile_app_iphone_de_agnes
-              data:
-                title: "Éteindre la prise bureau ?"
-                message: "La consommation est de {{ current_power | round(1) }}W. Faites un appui long sur cette notification pour voir les options."
-                data:
-                  actions:
-                    - action: "{{ action_confirm }}"
-                      title: "Oui, éteindre"
-                    - action: "{{ action_dismiss }}"
-                      title: "Non, garder allumé"
-                  tag: "plug_agnes_{{ context.id }}"
-            - alias: "Attendre la réponse (2 minutes max)"
-              wait_for_trigger:
-                - platform: event
-                  event_type: mobile_app_notification_action
-                  event_data:
-                    action: "{{ action_confirm }}"
-                - platform: event
-                  event_type: mobile_app_notification_action
-                  event_data:
-                    action: "{{ action_dismiss }}"
-              timeout: "00:02:00"
-              continue_on_timeout: true
-            - alias: "Vérifier si confirmation reçue et éteindre"
-              if:
-                - condition: template
-                  value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_confirm }}"
-              then:
-                - alias: "Éteindre la prise après confirmation"
-                  service: switch.turn_off
-                  target:
-                    entity_id: switch.prise_bureau_agnes_commutateur
-                - alias: "Notification de confirmation"
-                  service: notify.mobile_app_iphone_de_agnes
-                  data:
-                    title: "Prise éteinte"
-                    message: "La prise du bureau a été éteinte ({{ current_power | round(1) }}W)."
-                    data:
-                      tag: "plug_agnes_{{ context.id }}"
-              else:
-                - alias: "Action annulée ou timeout"
-                  service: notify.mobile_app_iphone_de_agnes
-                  data:
-                    title: "Prise conservée"
-                    message: "La prise du bureau reste allumée ({{ current_power | round(1) }}W)."
-                    data:
-                      tag: "plug_agnes_{{ context.id }}"
-        - conditions:
-            - alias: "Consommation faible - veille (< 50W)"
-              condition: template
-              value_template: "{{ current_power < 50 }}"
-          sequence:
-            - alias: "Éteindre la prise directement"
-              service: switch.turn_off
+            - service: switch.turn_off
               target:
                 entity_id: switch.prise_bureau_agnes_commutateur
-            - alias: "Notification d'extinction automatique"
-              service: notify.mobile_app_iphone_de_agnes
+            - service: notify.mobile_app_iphone_de_agnes
               data:
                 title: "Prise bureau éteinte"
-                message: "La prise du bureau a été éteinte automatiquement (mode veille: {{ current_power | round(1) }}W)."
-      default:
-        - alias: "Cas par défaut - éteindre"
-          service: switch.turn_off
-          target:
-            entity_id: switch.prise_bureau_agnes_commutateur
-  mode: single
+                message: "Consommation faible détectée pendant 15 minutes. La prise a été éteinte automatiquement."
+
+        - conditions:
+            - condition: trigger
+              id: confirm_medium
+            - condition: state
+              entity_id: input_boolean.prise_bureau_agnes_confirm_refused
+              state: 'off'
+          sequence:
+            - variables:
+                action_yes: "{{ 'AGNES_CONFIRM_YES_' ~ context.id }}"
+                action_no: "{{ 'AGNES_CONFIRM_NO_' ~ context.id }}"
+            - service: notify.mobile_app_iphone_de_agnes
+              data:
+                title: "Extinction de la prise bureau ?"
+                message: "Consommation modérée (20-80W) depuis 60 minutes. Voulez-vous éteindre la prise ?"
+                data:
+                  actions:
+                    - action: "{{ action_yes }}"
+                      title: "Oui, éteindre"
+                    - action: "{{ action_no }}"
+                      title: "Non, garder allumée"
+                  tag: "plug_agnes_confirm_{{ context.id }}"
+            - wait_for_trigger:
+                - platform: event
+                  event_type: mobile_app_notification_action
+                  event_data:
+                    action: "{{ action_yes }}"
+                - platform: event
+                  event_type: mobile_app_notification_action
+                  event_data:
+                    action: "{{ action_no }}"
+              timeout: "00:10:00"
+              continue_on_timeout: true
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_yes }}"
+                  sequence:
+                    - service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_agnes_commutateur
+                    - service: notify.mobile_app_iphone_de_agnes
+                      data:
+                        title: "Prise éteinte"
+                        message: "La prise du bureau a été éteinte suite à votre confirmation."
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is not defined or wait.trigger.event.data.action == action_no }}"
+                  sequence:
+                    - service: input_boolean.turn_on
+                      target:
+                        entity_id: input_boolean.prise_bureau_agnes_confirm_refused
+                    - service: notify.mobile_app_iphone_de_agnes
+                      data:
+                        title: "Prise conservée"
+                        message: "La prise du bureau reste allumée. Demande d'extinction désactivée jusqu'au prochain cycle."
+
+        - conditions:
+            - condition: trigger
+              id: agnes_leaves
+          sequence:
+            - variables:
+                action_yes: "{{ 'AGNES_KEEP_ON_YES_' ~ context.id }}"
+                action_no: "{{ 'AGNES_KEEP_ON_NO_' ~ context.id }}"
+            - service: notify.mobile_app_iphone_de_agnes
+              data:
+                title: "Prise bureau"
+                message: "Vous quittez la maison. Voulez-vous maintenir la prise du bureau allumée ?"
+                data:
+                  actions:
+                    - action: "{{ action_yes }}"
+                      title: "Oui, maintenir"
+                    - action: "{{ action_no }}"
+                      title: "Non, éteindre"
+                  tag: "plug_agnes_leave_{{ context.id }}"
+            - wait_for_trigger:
+                - platform: event
+                  event_type: mobile_app_notification_action
+                  event_data:
+                    action: "{{ action_yes }}"
+                - platform: event
+                  event_type: mobile_app_notification_action
+                  event_data:
+                    action: "{{ action_no }}"
+              timeout: "00:10:00"
+              continue_on_timeout: true
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_no }}"
+                  sequence:
+                    - service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_agnes_commutateur
+                    - service: notify.mobile_app_iphone_de_agnes
+                      data:
+                        title: "Prise éteinte"
+                        message: "La prise du bureau a été éteinte."
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is not defined or wait.trigger.event.data.action == action_yes }}"
+                  sequence:
+                    - service: notify.mobile_app_iphone_de_agnes
+                      data:
+                        title: "Prise maintenue"
+                        message: "La prise du bureau reste allumée."
+
+- id: 'auto_bureau_prise_agnes_reset_refusal'
+  alias: "Bureau - Prise Agnès - Réinitialisation refus"
+  description: |
+    Réinitialise le drapeau de refus de confirmation lorsque la prise est rallumée.
+    Permet de réactiver les demandes de confirmation pour le cycle suivant.
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: switch.prise_bureau_agnes_commutateur
+      from: 'off'
+      to: 'on'
+  condition: []
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.prise_bureau_agnes_confirm_refused

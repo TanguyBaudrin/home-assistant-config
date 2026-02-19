@@ -41,15 +41,47 @@ echo "✓ Configuration validation complete"
 
 [tasks.ha-info]
 description = "Get Home Assistant instance information"
-run = "hass-cli info"
+run = "mise exec pipx:homeassistant-cli -- hass-cli info"
 
 [tasks.ha-status]
 description = "Check Home Assistant entity states"
-run = "hass-cli state list"
+run = "mise exec pipx:homeassistant-cli -- hass-cli state list"
 
 [tasks.ha-logs]
 description = "Stream Home Assistant logs"
-run = "hass-cli event watch"
+run = "mise exec pipx:homeassistant-cli -- hass-cli event watch"
+
+[tasks.ha-entity-exists]
+description = "Check if a Home Assistant entity exists"
+usage = 'arg "<entity_id>" help="Home Assistant entity ID to check"'
+run = """
+if [ -z "${usage_entity_id}" ]; then
+  echo "Usage: mise run ha-entity-exists -- <entity_id>"
+  echo "Example: mise run ha-entity-exists -- sensor.prise_bureau_agnes_puissance"
+  exit 1
+fi
+echo "Checking if entity exists: ${usage_entity_id}"
+OUTPUT=$(mise exec pipx:homeassistant-cli -- hass-cli state get "${usage_entity_id}" 2>&1)
+if echo "$OUTPUT" | grep -q "not found"; then
+  echo "✗ Entity NOT found: ${usage_entity_id}"
+  exit 1
+else
+  echo "✓ Entity exists: ${usage_entity_id}"
+fi
+"""
+
+[tasks.ha-entity-list]
+description = "List all entities matching a pattern"
+usage = 'arg "<pattern>" help="Pattern to search for in entity IDs"'
+run = """
+if [ -z "${usage_pattern}" ]; then
+  echo "Usage: mise run ha-entity-list -- <pattern>"
+  echo "Example: mise run ha-entity-list -- prise_bureau"
+  exit 1
+fi
+echo "Listing entities matching: ${usage_pattern}"
+mise exec pipx:homeassistant-cli -- hass-cli state list | grep -i "${usage_pattern}" || echo "No entities found matching: ${usage_pattern}"
+"""
 
 [tasks.ha-check]
 description = "Check Home Assistant configuration files"

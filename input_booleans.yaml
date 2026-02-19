@@ -1,0 +1,7 @@
+prise_bureau_agnes_confirm_refused:
+  name: "Prise bureau Agnès - Confirmation refusée"
+  icon: mdi:power-plug-off
+
+prise_bureau_tanguy_confirm_refused:
+  name: "Prise bureau Tanguy - Confirmation refusée"
+  icon: mdi:power-plug-off
