@@ -2,8 +2,8 @@
   alias: "Bureau - Prise Agnès - Surveillance consommation"
   description: |
     Surveille en continu la consommation de la prise du bureau d'Agnès.
-    - Si consommation < 20W pendant 15min : extinction automatique
-    - Si consommation entre 20-80W pendant 60min : demande confirmation
+    - Si consommation < 4W pendant 15min : extinction automatique
+    - Si consommation entre 4-80W pendant 60min : demande confirmation
     - Si consommation > 80W pendant 5min : réinitialise le drapeau de refus
     - Si Agnès quitte la maison : demande si elle veut maintenir la prise allumée
     Mode restart pour gérer les changements d'état pendant les attentes.
@@ -12,12 +12,12 @@
     - id: auto_off_low
       platform: numeric_state
       entity_id: sensor.prise_bureau_agnes_puissance
-      below: 20
+      below: 4
       for: "00:15:00"
     - id: confirm_medium
       platform: numeric_state
       entity_id: sensor.prise_bureau_agnes_puissance
-      above: 20
+      above: 4
       below: 80
       for: "01:00:00"
     - id: clear_refusal_high
@@ -61,7 +61,7 @@
             - service: notify.mobile_app_iphone_de_agnes
               data:
                 title: "Extinction de la prise bureau ?"
-                message: "Consommation modérée (20-80W) depuis 60 minutes. Voulez-vous éteindre la prise ?"
+                message: "Consommation modérée (4-80W) depuis 60 minutes. Voulez-vous éteindre la prise ?"
                 data:
                   actions:
                     - action: "{{ action_yes }}"
@@ -94,7 +94,18 @@
                         message: "La prise du bureau a été éteinte suite à votre confirmation."
                 - conditions:
                     - condition: template
-                      value_template: "{{ wait.trigger is not defined or wait.trigger.event.data.action == action_no }}"
+                      value_template: "{{ wait.trigger is not defined }}"
+                  sequence:
+                    - service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_agnes_commutateur
+                    - service: notify.mobile_app_iphone_de_agnes
+                      data:
+                        title: "Prise éteinte"
+                        message: "Délai de réponse dépassé. La prise a été éteinte automatiquement."
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_no }}"
                   sequence:
                     - service: input_boolean.turn_on
                       target:
@@ -155,7 +166,18 @@
                         message: "La prise du bureau a été éteinte."
                 - conditions:
                     - condition: template
-                      value_template: "{{ wait.trigger is not defined or wait.trigger.event.data.action == action_yes }}"
+                      value_template: "{{ wait.trigger is not defined }}"
+                  sequence:
+                    - service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_agnes_commutateur
+                    - service: notify.mobile_app_iphone_de_agnes
+                      data:
+                        title: "Prise éteinte"
+                        message: "Délai de réponse dépassé. La prise a été éteinte."
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_yes }}"
                   sequence:
                     - service: notify.mobile_app_iphone_de_agnes
                       data:

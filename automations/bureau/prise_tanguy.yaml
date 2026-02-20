@@ -94,7 +94,18 @@
                         message: "La prise du bureau a été éteinte suite à votre confirmation."
                 - conditions:
                     - condition: template
-                      value_template: "{{ wait.trigger is not defined or wait.trigger.event.data.action == action_no }}"
+                      value_template: "{{ wait.trigger is not defined }}"
+                  sequence:
+                    - service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_tanguy_commutateur
+                    - service: notify.mobile_app_iphone_pro_de_tanguy
+                      data:
+                        title: "Prise éteinte"
+                        message: "Délai de réponse dépassé. La prise a été éteinte automatiquement."
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_no }}"
                   sequence:
                     - service: input_boolean.turn_on
                       target:
@@ -155,7 +166,18 @@
                         message: "La prise du bureau a été éteinte."
                 - conditions:
                     - condition: template
-                      value_template: "{{ wait.trigger is not defined or wait.trigger.event.data.action == action_yes }}"
+                      value_template: "{{ wait.trigger is not defined }}"
+                  sequence:
+                    - service: switch.turn_off
+                      target:
+                        entity_id: switch.prise_bureau_tanguy_commutateur
+                    - service: notify.mobile_app_iphone_pro_de_tanguy
+                      data:
+                        title: "Prise éteinte"
+                        message: "Délai de réponse dépassé. La prise a été éteinte."
+                - conditions:
+                    - condition: template
+                      value_template: "{{ wait.trigger is defined and wait.trigger.event.data.action == action_yes }}"
                   sequence:
                     - service: notify.mobile_app_iphone_pro_de_tanguy
                       data:
