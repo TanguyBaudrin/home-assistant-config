@@ -4,7 +4,7 @@
     Surveille en continu la consommation de la prise du bureau d'Agnès.
     - Si consommation < 20W pendant 15min : extinction automatique
     - Si consommation entre 20-80W pendant 60min : demande confirmation
-    - Si consommation > 80W : aucune action
+    - Si consommation > 80W pendant 5min : réinitialise le drapeau de refus
     - Si Agnès quitte la maison : demande si elle veut maintenir la prise allumée
     Mode restart pour gérer les changements d'état pendant les attentes.
   mode: restart
@@ -20,6 +20,11 @@
       above: 20
       below: 80
       for: "01:00:00"
+    - id: clear_refusal_high
+      platform: numeric_state
+      entity_id: sensor.prise_bureau_agnes_puissance
+      above: 80
+      for: "00:05:00"
     - id: agnes_leaves
       platform: zone
       entity_id: person.agnes
@@ -98,6 +103,14 @@
                       data:
                         title: "Prise conservée"
                         message: "La prise du bureau reste allumée. Demande d'extinction désactivée jusqu'au prochain cycle."
+
+        - conditions:
+            - condition: trigger
+              id: clear_refusal_high
+          sequence:
+            - service: input_boolean.turn_off
+              target:
+                entity_id: input_boolean.prise_bureau_agnes_confirm_refused
 
         - conditions:
             - condition: trigger
