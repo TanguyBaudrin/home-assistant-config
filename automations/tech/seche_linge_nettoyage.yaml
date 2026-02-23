@@ -1,0 +1,21 @@
+- id: 'auto_seche_linge_nettoyage_requis'
+  alias: "Tech - Sèche-linge - Nettoyage requis"
+  description: >
+    Notifie les deux iPhones quand le sèche-linge a atteint 30 cycles
+    et nécessite un nettoyage. Se déclenche à chaque cycle >= 30.
+  trigger:
+    - platform: state
+      entity_id: counter.nombre_de_cycles_de_sechages
+  condition:
+    - condition: template
+      value_template: "{{ states('counter.nombre_de_cycles_de_sechages') | int(0) >= 30 }}"
+  action:
+    - service: notify.mobile_app_iphone_pro_de_tanguy
+      data:
+        message: "Le sèche-linge a atteint {{ states('counter.nombre_de_cycles_de_sechages') }} cycles. Il est temps de le nettoyer !"
+        title: "Nettoyage sèche-linge requis"
+    - service: notify.mobile_app_iphone_de_agnes
+      data:
+        message: "Le sèche-linge a atteint {{ states('counter.nombre_de_cycles_de_sechages') }} cycles. Il est temps de le nettoyer !"
+        title: "Nettoyage sèche-linge requis"
+  mode: single
