@@ -78,7 +78,6 @@ switch:
     automatic_add: false
   - platform: circadian_lighting
     lights_brightness:
-      - light.lumiere_cuisine
       - light.sourcing_creation_eb_e27_st64_cct_fv_lumiere
       - light.ampoule_boulanger_lumiere
 

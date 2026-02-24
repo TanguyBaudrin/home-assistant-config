@@ -1,10 +1,29 @@
 - id: '1699796906579'
   alias: Cuisine - Lumières - Allumage automatique en cas de mouvement
-  description: Cette automatisation allume la lumière de la cuisine lors d’une détection de mouvement et l’éteint automatiquement après 15 minutes d’inactivité pour optimiser le confort et l’économie d’énergie.
-  use_blueprint:
-    path: homeassistant/motion_light.yaml
-    input:
-      motion_entity: binary_sensor.motion_sensor_motion_detection
-      light_target:
-        area_id: cuisine
-      no_motion_wait: 900
+  description: |
+    Cette automatisation allume l'interrupteur mural de la cuisine lors d'une détection 
+    de mouvement et l'éteint automatiquement après 15 minutes d'inactivité pour optimiser 
+    le confort et l'économie d'énergie.
+    (Modifié le 2026-02-24 : migration de light.lumiere_cuisine vers switch.interupteur_mural_lumieres)
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.motion_sensor_motion_detection
+      to: 'on'
+  condition: []
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.interupteur_mural_lumieres
+    - wait_for_trigger:
+        - platform: state
+          entity_id: binary_sensor.motion_sensor_motion_detection
+          to: 'off'
+          for:
+            seconds: 900
+      timeout:
+        hours: 24
+      continue_on_timeout: false
+    - service: switch.turn_off
+      target:
+        entity_id: switch.interupteur_mural_lumieres
+  mode: restart
