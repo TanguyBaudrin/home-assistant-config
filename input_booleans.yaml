@@ -5,3 +5,7 @@ prise_bureau_agnes_confirm_refused:
 prise_bureau_tanguy_confirm_refused:
   name: "Prise bureau Tanguy - Confirmation refusée"
   icon: mdi:power-plug-off
+
+lumieres_desactivees_par_media:
+  name: "Lumières désactivées par média"
+  icon: mdi:play-circle-outline

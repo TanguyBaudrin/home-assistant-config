@@ -1509,7 +1509,10 @@
   mode: single
 - id: '1738145555399'
   alias: Auto - Maison - Volets - Gestion des volets basé sur les horaires et le soleil
-  description: ''
+  description: |
+    Ouvre les volets et désactive les automatismes lumineux le matin au réveil ou au lever du soleil.
+    Réinitialise le flag lumieres_desactivees_par_media pour éviter que Jellyfin ne restaure les lumières
+    après que cette automation les ait désactivées. (Modifié le 2026-03-06)
   triggers:
   - event: sunrise
     id: soleil
@@ -1537,6 +1540,9 @@
         after: sunrise
       alias: Déclenché à 7h15, et le soleil est déjà levé
   actions:
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.lumieres_desactivees_par_media
   - data: {}
     target:
       entity_id: input_boolean.lumieres_automatiques
@@ -2049,7 +2055,11 @@
   mode: single
 - id: '1766595380189'
   alias: Auto - Salon - Eteindre la lumière si on lance une vidéo sur Jellyfin
-  description: ''
+  description: |
+    Désactive les automatismes lumineux du salon quand une vidéo est lancée sur Jellyfin.
+    Restaure les automatismes uniquement si la lecture a été interrompue et non pas si une
+    autre automation (ex: volets le matin) a désactivé les lumières entre temps.
+    (Modifié le 2026-03-06)
   triggers:
   - trigger: state
     entity_id:
@@ -2071,6 +2081,9 @@
         id:
         - lance_lecture
       sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.lumieres_desactivees_par_media
       - action: automation.turn_off
         metadata: {}
         target:
@@ -2086,7 +2099,13 @@
       - condition: trigger
         id:
         - stop_lecture
+      - condition: state
+        entity_id: input_boolean.lumieres_desactivees_par_media
+        state: 'on'
       sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.lumieres_desactivees_par_media
       - action: automation.turn_on
         metadata: {}
         target:
