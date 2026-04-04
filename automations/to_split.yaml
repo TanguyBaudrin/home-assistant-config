@@ -707,8 +707,7 @@
       sequence:
       - action: light.turn_on
         metadata: {}
-        data:
-          kelvin: 6500
+        data: {}
         target:
           area_id: salon
     - conditions:
