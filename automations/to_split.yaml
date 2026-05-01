@@ -1764,7 +1764,10 @@
   mode: single
 - id: '1751181585095'
   alias: Global - météo - Changement dans l'indice UV
-  description: ''
+  description: |
+    Ferme les volets du 1er étage quand l'indice UV passe de modéré à haut.
+    Vérifie si la fenêtre de la cuisine est fermée avant de fermer le volet cuisine.
+    (Migré le 2026-05-01)
   triggers:
   - trigger: state
     entity_id:
@@ -1795,10 +1798,35 @@
         metadata: {}
         data: {}
         target:
-          floor_id: 1er_etage
-          entity_id:
-          - cover.salle_a_manger_petit
-          - cover.cuisine
+          entity_id: cover.salle_a_manger_petit
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: binary_sensor.capteur_de_fenetre_open
+            state: 'off'
+          sequence:
+          - action: cover.close_cover
+            metadata: {}
+            data: {}
+            target:
+              entity_id: cover.cuisine
+        - conditions:
+          - condition: state
+            entity_id: binary_sensor.capteur_de_fenetre_open
+            state: 'on'
+          sequence:
+          - wait_for_trigger:
+            - platform: state
+              entity_id: binary_sensor.capteur_de_fenetre_open
+              to: 'off'
+            timeout:
+              minutes: 10
+            continue_on_timeout: false
+          - action: cover.close_cover
+            metadata: {}
+            data: {}
+            target:
+              entity_id: cover.cuisine
     - conditions:
       - condition: trigger
         id:
