@@ -1,0 +1,105 @@
+- id: 'auto_grenier_vmc_verification_consommation'
+  alias: "Auto - Grenier - VMC - Vérification de la consommation après changement de vitesse"
+  description: |
+    Vérifie que la VMC consomme bien de l'énergie après un changement de vitesse.
+    Si aucune consommation n'est détectée, tente de relancer la VMC en basculant
+    temporairement sur l'autre vitesse puis en revenant à la vitesse d'origine.
+    Après 3 tentatives infructueuses, envoie une notification d'alerte sur les
+    iPhones de Tanguy et Agnès.
+    (Créé le 2026-06-01)
+  trigger:
+    - id: vitesse_change
+      trigger: state
+      entity_id: input_select.interrupteur_vmc
+      to: "Vitesse 1"
+    - id: vitesse_change
+      trigger: state
+      entity_id: input_select.interrupteur_vmc
+      to: "Vitesse 2"
+  condition:
+    - alias: Capteur de puissance disponible
+      condition: template
+      value_template: >
+        {{ states('sensor.module_vmc_puissance') not in ['unavailable',
+           'unknown', 'none', None] }}
+  action:
+    - variables:
+        requested_speed: "{{ trigger.to_state.state }}"
+        max_retries: 3
+        power_threshold: 5
+        spin_up_delay_seconds: 10
+        retry_delay_seconds: 5
+    - alias: Boucle de vérification avec relance
+      repeat:
+        count: "{{ max_retries }}"
+        sequence:
+          - alias: Attendre le temps de démarrage de la VMC
+            delay:
+              seconds: "{{ spin_up_delay_seconds }}"
+          - alias: Vérifier la consommation
+            choose:
+              - conditions:
+                  - alias: La VMC consomme de l'énergie
+                    condition: numeric_state
+                    entity_id: sensor.module_vmc_puissance
+                    above: "{{ power_threshold }}"
+                sequence:
+                  - alias: Arrêter la boucle, VMC fonctionnelle
+                    stop: "VMC OK - consommation détectée"
+              - conditions:
+                  - alias: Toujours aucune consommation après les tentatives
+                    condition: template
+                    value_template: "{{ repeat.index == max_retries }}"
+                sequence:
+                  - alias: Notification d'alerte aux iPhones
+                    repeat:
+                      for_each:
+                        - notify.mobile_app_iphone_pro_de_tanguy
+                        - notify.mobile_app_iphone_de_tanguy
+                        - notify.mobile_app_iphone_de_agnes
+                      sequence:
+                        - action: "{{ repeat.item }}"
+                          data:
+                            title: "⚠️ VMC - Problème détecté"
+                            message: >
+                              La VMC ne semble pas consommer d'énergie après
+                              {{ max_retries }} tentatives de relance.
+                              Vitesse demandée : {{ requested_speed }}.
+                              Veuillez vérifier le module VMC dans le grenier.
+                            data_template:
+                              tag: "vmc_alert"
+                              importance: high
+                  - alias: Sortir après notification
+                    stop: "VMC en panne - notification envoyée"
+          - alias: Relance - basculer sur l'autre vitesse
+            choose:
+              - conditions:
+                  - alias: Vitesse demandée Vitesse 1 - passer à Vitesse 2
+                    condition: template
+                    value_template: "{{ requested_speed == 'Vitesse 1' }}"
+                sequence:
+                  - action: input_select.select_option
+                    target:
+                      entity_id: input_select.interrupteur_vmc
+                    data:
+                      option: "Vitesse 2"
+              - conditions:
+                  - alias: Vitesse demandée Vitesse 2 - passer à Vitesse 1
+                    condition: template
+                    value_template: "{{ requested_speed == 'Vitesse 2' }}"
+                sequence:
+                  - action: input_select.select_option
+                    target:
+                      entity_id: input_select.interrupteur_vmc
+                    data:
+                      option: "Vitesse 1"
+          - alias: Pause avant de revenir à la vitesse d'origine
+            delay:
+              seconds: "{{ retry_delay_seconds }}"
+          - alias: Revenir à la vitesse d'origine
+            action: input_select.select_option
+            target:
+              entity_id: input_select.interrupteur_vmc
+            data:
+              option: "{{ requested_speed }}"
+  mode: restart
