@@ -40,9 +40,9 @@
             choose:
               - conditions:
                   - alias: La VMC consomme de l'énergie
-                    condition: numeric_state
-                    entity_id: sensor.module_vmc_puissance
-                    above: "{{ power_threshold }}"
+                    condition: template
+                    value_template: >
+                      {{ states('sensor.module_vmc_puissance') | float(0) > power_threshold | float(0) }}
                 sequence:
                   - alias: Arrêter la boucle, VMC fonctionnelle
                     stop: "VMC OK - consommation détectée"
