@@ -69,7 +69,7 @@
           sequence:
             - service: alarm_control_panel.alarm_arm_home
               target:
-                entity: alarm_control_panel.aarlo_location_home
+                device_id: c83b0003189dab2a3fa137b4e527d448
         - alias: Mode "nuit" le soir si quelqu’un est à la maison
           conditions:
             - condition: trigger
@@ -87,9 +87,9 @@
           sequence:
             - service: alarm_control_panel.alarm_arm_night
               target:
-                entity: alarm_control_panel.aarlo_location_home
+                device_id: c83b0003189dab2a3fa137b4e527d448
       default:
         - service: alarm_control_panel.alarm_arm_away
           target:
-            entity: alarm_control_panel.aarlo_location_home
+            device_id: c83b0003189dab2a3fa137b4e527d448
   mode: single
