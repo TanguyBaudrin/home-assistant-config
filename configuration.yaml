@@ -44,18 +44,31 @@ battery_notes:
 
 rflink:
   port: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_556393131333515090E1-if00
-  
-light:
-- platform: rflink
-  device_defaults:
-    signal_repetitions: 10
-  automatic_add: false
-  devices:
-    newkaku_00000001_1: 
-      name: prise_chacon_1
-    newkaku_00000002_1: 
-      name: prise_chacon_2
-      signal_repetitions: 1
+  light:
+    device_defaults:
+      signal_repetitions: 10
+    automatic_add: false
+    devices:
+      newkaku_00000001_1: 
+        name: prise_chacon_1
+      newkaku_00000002_1: 
+        name: prise_chacon_2
+        signal_repetitions: 1
+  switch:
+    devices:
+      newkaku_007bfd26_1:
+        name: interupteur_rflink_1
+    automatic_add: false
+  cover:
+    devices:
+      RTS_02FFFF_0: 
+        name: Cuisine
+      RTS_0F010F_0: 
+        name: Salle à manger petit
+      RTS_0F010C_0: 
+        name: Salle à manger grand
+      RTS_0F010B_0: 
+        name: Salon
 
 zha:
   device_config:
@@ -71,27 +84,10 @@ zha:
       type: switch
       
 switch:
-  - platform: rflink
-    devices:
-      newkaku_007bfd26_1:
-        name: interupteur_rflink_1
-    automatic_add: false
   - platform: circadian_lighting
     lights_brightness:
       - light.sourcing_creation_eb_e27_st64_cct_fv_lumiere
       - light.ampoule_boulanger_lumiere
-
-cover:
-- platform: rflink
-  devices:
-    RTS_02FFFF_0: 
-      name: Cuisine
-    RTS_0F010F_0: 
-      name: Salle à manger petit
-    RTS_0F010C_0: 
-      name: Salle à manger grand
-    RTS_0F010B_0: 
-      name: Salon
       
 sensor:
   - platform: rest
