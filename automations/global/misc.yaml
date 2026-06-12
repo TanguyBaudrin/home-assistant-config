@@ -26,7 +26,7 @@
     - alias: Passer Arlo en mode "nuit"
       service: alarm_control_panel.alarm_arm_night
       target:
-        entity_id: alarm_control_panel.aarlo_base_arlo_maison
+        entity_id: alarm_control_panel.aarlo_location_home
   mode: single
 
 - id: '1699870051044'
