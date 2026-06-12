@@ -24,7 +24,7 @@
   - alias: Passer les caméras Arlo en mode armé
     data: {}
     target:
-      entity_id: alarm_control_panel.aarlo_base_arlo_maison
+      entity_id: alarm_control_panel.aarlo_location_home
     action: alarm_control_panel.alarm_arm_away
   - data:
       preset_mode: away
@@ -43,7 +43,7 @@
   trigger:
   - platform: state
     entity_id:
-    - alarm_control_panel.aarlo_base_arlo_maison
+    - alarm_control_panel.aarlo_location_home
     from:
     to:
   condition: []
@@ -171,7 +171,7 @@
     action: climate.set_preset_mode
   - if:
     - condition: state
-      entity_id: alarm_control_panel.aarlo_base_arlo_maison
+      entity_id: alarm_control_panel.aarlo_location_home
       state: armed_away
     then:
     - data: {}
