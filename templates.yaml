@@ -446,3 +446,11 @@
         {% set rh = states('sensor.plaques_energy_rouge_hc') | float(0) * states('input_number.tarif_edf_tempo_rouge_hc') | float(0) %}
         {% set rhp = states('sensor.plaques_energy_rouge_hp') | float(0) * states('input_number.tarif_edf_tempo_rouge_hp') | float(0) %}
         {{ (bh + bhp + blh + blhp + rh + rhp) | round(2) }}
+
+
+- binary_sensor:
+    - name: "Mode canicule"
+      unique_id: mode_canicule
+      state: >
+        {{ states('sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure') | float(0) >= 30
+            or states('sensor.temperature_moyenne_de_la_maison') | float(0) >= 26 }}
