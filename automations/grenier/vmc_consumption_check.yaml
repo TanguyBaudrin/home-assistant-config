@@ -27,7 +27,7 @@
         requested_speed: "{{ trigger.to_state.state }}"
         max_retries: 3
         power_threshold: 5
-        spin_up_delay_seconds: 10
+        spin_up_delay_seconds: 60
         retry_delay_seconds: 5
     - alias: Boucle de vérification avec relance
       repeat:
