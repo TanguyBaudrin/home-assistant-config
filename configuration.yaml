@@ -88,7 +88,25 @@ switch:
     lights_brightness:
       - light.sourcing_creation_eb_e27_st64_cct_fv_lumiere
       - light.ampoule_boulanger_lumiere
-      
+
+cover:
+  - platform: group
+    name: "Cover est"
+    entities:
+      - cover.velux_external_cover_roller_shutter_3
+      - cover.velux_external_cover_roller_shutter_9
+      - cover.velux_external_cover_roller_shutter_10
+  - platform: group
+    name: "Cover ouest"
+    entities:
+      - cover.cuisine
+      - cover.velux_external_cover_roller_shutter_7
+      - cover.velux_external_cover_roller_shutter_8
+  - platform: group
+    name: "Cover sud"
+    entities:
+      - cover.salle_a_manger_petit
+    
 sensor:
   - platform: rest
     name: Sony Bravia TV Color mode
