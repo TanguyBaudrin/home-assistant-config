@@ -1,4 +1,5 @@
 - alias: Canicule - notification free cooling efficace
+  id: canicule_free_cooling
   description: Prévenir uniquement si l'extérieur est au moins 1,5°C plus frais
   mode: single
 
@@ -35,6 +36,7 @@
           C'est le bon moment pour rafraîchir la maison.
 
 - alias: Canicule - fermer les fenêtres le matin
+  id: canicule_close_windows
   description: Prévenir quand l'air extérieur devient plus chaud que l'intérieur
   mode: single
 
@@ -162,6 +164,7 @@
 
 
 - alias: Canicule - rouvrir volets après exposition
+  id: canicule_open_cover
   description: Rouvrir les volets est quand le soleil ne tape plus dessus
   mode: single
 
