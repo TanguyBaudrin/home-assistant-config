@@ -63,6 +63,7 @@
           Fermez les fenêtres et les volets pour conserver la fraîcheur.
 
 - alias: Canicule - fermer volets est
+  id: canicule_close_cover
   description: Fermer les volets est le matin en période de chaleur
   mode: single
 
@@ -70,102 +71,92 @@
     - platform: time_pattern
       minutes: "/10"
 
-  condition:
-    - condition: state
-      entity_id: binary_sensor.mode_canicule
-      state: "on"
-    - condition: numeric_state
-      entity_id: sun.sun
-      attribute: elevation
-      above: 10
-    - condition: template
-      value_template: >
-        {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}
+  actions:
+    - parallel:
+        - action:
+          - alias: "Fermer les volets est"
+            conditions:
+              - condition: state
+                entity_id: binary_sensor.mode_canicule
+                state: "on"
+              - condition: numeric_state
+                entity_id: sun.sun
+                attribute: elevation
+                above: 10
+              - condition: template
+                value_template: >
+                  {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
+                        
+          - service: cover.close_cover
+            target:
+              entity_id:
+                - cover.cuisine
+          - delay:
+              hours: 0
+              minutes: 5
+              seconds: 0
+          - service: cover.set_cover_position
+            target:
+              entity_id: cover.cover_ouest
+            data:
+              position: 20
 
-  action:
-    - service: cover.close_cover
-      target:
-        entity_id:
-          - cover.salle_a_manger_grand
-    - delay:
-        hours: 0
-        minutes: 5
-        seconds: 0
-    - service: cover.set_cover_position
-      target:
-        entity_id: cover.cover_est
-      data:
-        position: 20
+        - action:
+            - alias: "Fermer les volets ouest"
+              conditions:
+                - condition: state
+                  entity_id: binary_sensor.mode_canicule
+                  state: "on"
+                - condition: numeric_state
+                  entity_id: sun.sun
+                  attribute: elevation
+                  above: 10
+                - condition: template
+                  value_template: >
+                    {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
 
-- alias: Canicule - fermer volets ouest
-  description: Fermer les volets ouest l'après-midi en période de chaleur
-  mode: single
+            - service: cover.close_cover
+              target:
+                entity_id:
+                  - cover.salle_a_manger_grand
+            - delay:
+                hours: 0
+                minutes: 5
+                seconds: 0
+            - service: cover.set_cover_position
+              target:
+                entity_id: cover.cover_est
+              data:
+                position: 20
 
-  trigger:
-    - platform: time_pattern
-      minutes: "/10"
+        - action:
+            - alias: "Fermer les volets sud"
+              conditions:
+                - condition: state
+                  entity_id: binary_sensor.mode_canicule
+                  state: "on"
+                - condition: numeric_state
+                  entity_id: sun.sun
+                  attribute: elevation
+                  above: 20
+                - condition: template
+                  value_template: >
+                    {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
+            
+            - service: cover.close_cover
+              target:
+                entity_id:
+                  - cover.salle_a_manger_petit
+            - delay:
+                hours: 0
+                minutes: 5
+                seconds: 0
+            - service: cover.set_cover_position
+              target:
+                entity_id: cover.cover_est
+              data:
+                position: 20
 
-  condition:
-    - condition: state
-      entity_id: binary_sensor.mode_canicule
-      state: "on"
-    - condition: numeric_state
-      entity_id: sun.sun
-      attribute: elevation
-      above: 10
-    - condition: template
-      value_template: >
-        {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
-
-  action:
-    - service: cover.close_cover
-      target:
-        entity_id:
-          - cover.cuisine
-    - delay:
-        hours: 0
-        minutes: 5
-        seconds: 0
-    - service: cover.set_cover_position
-      target:
-        entity_id: cover.cover_ouest
-      data:
-        position: 20
-
-- alias: Canicule - fermer volets sud
-  description: Fermer les volets sud quand le soleil chauffe la façade
-  mode: single
-
-  trigger:
-    - platform: time_pattern
-      minutes: "/10"
-
-  condition:
-    - condition: state
-      entity_id: binary_sensor.mode_canicule
-      state: "on"
-    - condition: numeric_state
-      entity_id: sun.sun
-      attribute: elevation
-      above: 20
-    - condition: template
-      value_template: >
-        {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
-
-  action:
-    - service: cover.close_cover
-      target:
-        entity_id:
-          - cover.salle_a_manger_petit
-    - delay:
-        hours: 0
-        minutes: 5
-        seconds: 0
-    - service: cover.set_cover_position
-      target:
-        entity_id: cover.cover_est
-      data:
-        position: 20
 
 - alias: Canicule - rouvrir volets est après exposition
   description: Rouvrir les volets est quand le soleil ne tape plus dessus
