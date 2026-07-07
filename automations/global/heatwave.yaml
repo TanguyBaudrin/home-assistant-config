@@ -73,20 +73,19 @@
 
   actions:
     - parallel:
-      - sequence:
-        - alias: "Fermer les volets est"
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.mode_canicule
-              state: "on"
-            - condition: numeric_state
-              entity_id: sun.sun
-              attribute: elevation
-              above: 10
-            - condition: template
-              value_template: >
-                {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
-                        
+      - alias: "Fermer les volets est"
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            above: 10
+          - condition: template
+            value_template: >
+              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
+        sequence:                
         - service: cover.close_cover
           target:
             entity_id:
@@ -101,61 +100,59 @@
           data:
             position: 20
 
-      - sequence:
-        - alias: "Fermer les volets ouest"
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.mode_canicule
-              state: "on"
-            - condition: numeric_state
-              entity_id: sun.sun
-              attribute: elevation
-              above: 10
-            - condition: template
-              value_template: >
-                {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
+      - alias: "Fermer les volets ouest"
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            above: 10
+          - condition: template
+            value_template: >
+              {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id:
+                - cover.salle_a_manger_grand
+          - delay:
+              hours: 0
+              minutes: 5
+              seconds: 0
+          - service: cover.set_cover_position
+            target:
+              entity_id: cover.cover_est
+            data:
+              position: 20
 
-        - service: cover.close_cover
-          target:
-            entity_id:
-              - cover.salle_a_manger_grand
-        - delay:
-            hours: 0
-            minutes: 5
-            seconds: 0
-        - service: cover.set_cover_position
-          target:
-            entity_id: cover.cover_est
-          data:
-            position: 20
-
-      - sequence:
-        - alias: "Fermer les volets sud"
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.mode_canicule
-              state: "on"
-            - condition: numeric_state
-              entity_id: sun.sun
-              attribute: elevation
-              above: 20
-            - condition: template
-              value_template: >
-                {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
-            
-        - service: cover.close_cover
-          target:
-            entity_id:
-              - cover.salle_a_manger_petit
-        - delay:
-            hours: 0
-            minutes: 5
-            seconds: 0
-        - service: cover.set_cover_position
-          target:
-            entity_id: cover.cover_est
-          data:
-            position: 20
+      - alias: "Fermer les volets sud"
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            above: 20
+          - condition: template
+            value_template: >
+              {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
+        sequence:            
+          - service: cover.close_cover
+            target:
+              entity_id:
+                - cover.salle_a_manger_petit
+          - delay:
+              hours: 0
+              minutes: 5
+              seconds: 0
+          - service: cover.set_cover_position
+            target:
+              entity_id: cover.cover_est
+            data:
+              position: 20
 
 
 - alias: Canicule - rouvrir volets est après exposition
