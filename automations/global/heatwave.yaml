@@ -73,8 +73,9 @@
 
   actions:
     - parallel:
+      - sequence: 
         - action:
-          - alias: "Fermer les volets est"
+            alias: "Fermer les volets est"
             conditions:
               - condition: state
                 entity_id: binary_sensor.mode_canicule
@@ -87,20 +88,21 @@
                 value_template: >
                   {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
                         
-          - service: cover.close_cover
-            target:
-              entity_id:
-                - cover.cuisine
-          - delay:
-              hours: 0
-              minutes: 5
-              seconds: 0
-          - service: cover.set_cover_position
-            target:
-              entity_id: cover.cover_ouest
-            data:
-              position: 20
-
+        - service: cover.close_cover
+          target:
+            entity_id:
+              - cover.cuisine
+        - delay:
+            hours: 0
+            minutes: 5
+            seconds: 0
+        - service: cover.set_cover_position
+          target:
+            entity_id: cover.cover_ouest
+          data:
+            position: 20
+            
+      - sequence:
         - action:
             - alias: "Fermer les volets ouest"
               conditions:
@@ -115,20 +117,21 @@
                   value_template: >
                     {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
 
-            - service: cover.close_cover
-              target:
-                entity_id:
-                  - cover.salle_a_manger_grand
-            - delay:
-                hours: 0
-                minutes: 5
-                seconds: 0
-            - service: cover.set_cover_position
-              target:
-                entity_id: cover.cover_est
-              data:
-                position: 20
+        - service: cover.close_cover
+          target:
+            entity_id:
+              - cover.salle_a_manger_grand
+        - delay:
+            hours: 0
+            minutes: 5
+            seconds: 0
+        - service: cover.set_cover_position
+          target:
+            entity_id: cover.cover_est
+          data:
+            position: 20
 
+      - sequence:
         - action:
             - alias: "Fermer les volets sud"
               conditions:
@@ -143,19 +146,19 @@
                   value_template: >
                     {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
             
-            - service: cover.close_cover
-              target:
-                entity_id:
-                  - cover.salle_a_manger_petit
-            - delay:
-                hours: 0
-                minutes: 5
-                seconds: 0
-            - service: cover.set_cover_position
-              target:
-                entity_id: cover.cover_est
-              data:
-                position: 20
+        - service: cover.close_cover
+          target:
+            entity_id:
+              - cover.salle_a_manger_petit
+        - delay:
+            hours: 0
+            minutes: 5
+            seconds: 0
+        - service: cover.set_cover_position
+          target:
+            entity_id: cover.cover_est
+          data:
+            position: 20
 
 
 - alias: Canicule - rouvrir volets est après exposition
