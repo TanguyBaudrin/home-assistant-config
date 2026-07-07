@@ -73,20 +73,19 @@
 
   actions:
     - parallel:
-      - sequence: 
-        - action:
-            alias: "Fermer les volets est"
-            conditions:
-              - condition: state
-                entity_id: binary_sensor.mode_canicule
-                state: "on"
-              - condition: numeric_state
-                entity_id: sun.sun
-                attribute: elevation
-                above: 10
-              - condition: template
-                value_template: >
-                  {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
+      - sequence:
+        - alias: "Fermer les volets est"
+          conditions:
+            - condition: state
+              entity_id: binary_sensor.mode_canicule
+              state: "on"
+            - condition: numeric_state
+              entity_id: sun.sun
+              attribute: elevation
+              above: 10
+            - condition: template
+              value_template: >
+                {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
                         
         - service: cover.close_cover
           target:
@@ -101,21 +100,20 @@
             entity_id: cover.cover_ouest
           data:
             position: 20
-            
+
       - sequence:
-        - action:
-            - alias: "Fermer les volets ouest"
-              conditions:
-                - condition: state
-                  entity_id: binary_sensor.mode_canicule
-                  state: "on"
-                - condition: numeric_state
-                  entity_id: sun.sun
-                  attribute: elevation
-                  above: 10
-                - condition: template
-                  value_template: >
-                    {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
+        - alias: "Fermer les volets ouest"
+          conditions:
+            - condition: state
+              entity_id: binary_sensor.mode_canicule
+              state: "on"
+            - condition: numeric_state
+              entity_id: sun.sun
+              attribute: elevation
+              above: 10
+            - condition: template
+              value_template: >
+                {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
 
         - service: cover.close_cover
           target:
@@ -132,19 +130,18 @@
             position: 20
 
       - sequence:
-        - action:
-            - alias: "Fermer les volets sud"
-              conditions:
-                - condition: state
-                  entity_id: binary_sensor.mode_canicule
-                  state: "on"
-                - condition: numeric_state
-                  entity_id: sun.sun
-                  attribute: elevation
-                  above: 20
-                - condition: template
-                  value_template: >
-                    {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
+        - alias: "Fermer les volets sud"
+          conditions:
+            - condition: state
+              entity_id: binary_sensor.mode_canicule
+              state: "on"
+            - condition: numeric_state
+              entity_id: sun.sun
+              attribute: elevation
+              above: 20
+            - condition: template
+              value_template: >
+                {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
             
         - service: cover.close_cover
           target:
