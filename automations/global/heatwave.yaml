@@ -55,7 +55,13 @@
       state: "on"
 
   action:
-    - service: notify.mobile_app_votre_telephone
+    - service: notify.mobile_app_iphone_pro_de_tanguy
+      data:
+        title: "Fermez les fenêtres"
+        message: >
+          L'air extérieur devient plus chaud que l'intérieur.
+          Fermez les fenêtres et les volets pour conserver la fraîcheur.
+    - service: notify.mobile_app_iphone_de_agnes
       data:
         title: "Fermez les fenêtres"
         message: >
