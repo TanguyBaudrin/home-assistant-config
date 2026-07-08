@@ -93,15 +93,14 @@ cover:
   - platform: group
     name: "Cover est"
     entities:
-      - cover.velux_external_cover_roller_shutter_3
-      - cover.velux_external_cover_roller_shutter_9
-      - cover.velux_external_cover_roller_shutter_10
+      - cover.velux_external_cover_roller_shutter_7
+      - cover.velux_external_cover_roller_shutter_8
   - platform: group
     name: "Cover ouest"
     entities:
-      - cover.cuisine
-      - cover.velux_external_cover_roller_shutter_7
-      - cover.velux_external_cover_roller_shutter_8
+      - cover.velux_external_cover_roller_shutter_3
+      - cover.velux_external_cover_roller_shutter_9
+      - cover.velux_external_cover_roller_shutter_10
   - platform: group
     name: "Cover sud"
     entities:

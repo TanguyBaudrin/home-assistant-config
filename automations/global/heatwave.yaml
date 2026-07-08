@@ -92,7 +92,10 @@
             above: 10
           - condition: template
             value_template: >
-              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}  
+              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }} 
+          - condition:
+            value_template: >
+              {{ state_attr('cover.cover_est', 'position') | float(0) > 10}} 
         sequence:                
         - service: cover.close_cover
           target:
@@ -119,7 +122,10 @@
             above: 10
           - condition: template
             value_template: >
-              {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
+              {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }} 
+          - condition:
+            value_template: >
+              {{ state_attr('cover.cover_ouest', 'position') | float(0) > 10}}
         sequence:
           - service: cover.close_cover
             target:
@@ -146,7 +152,10 @@
             above: 20
           - condition: template
             value_template: >
-              {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
+              {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }} 
+          - condition:
+            value_template: >
+              {{ state_attr('cover.cover_sud', 'position') | float(0) > 10}}
         sequence:            
           - service: cover.close_cover
             target:
