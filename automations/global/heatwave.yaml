@@ -80,9 +80,8 @@
       minutes: "/10"
 
   actions:
-    - choose:
-      - alias: "Fermer les volets est"
-        conditions:
+    - parallel:
+      - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule
             state: "on"
@@ -96,23 +95,22 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_est', 'position') | float(0) > 10}} 
-        sequence:                
-        - service: cover.close_cover
-          target:
-            entity_id:
-              - cover.cuisine
-        - delay:
-            hours: 0
-            minutes: 1
-            seconds: 0
-        - service: cover.set_cover_position
-          target:
-            entity_id: cover.cover_ouest
-          data:
-            position: 10
+          - service: cover.close_cover
+            target:
+              entity_id:
+                - cover.cuisine
+          - delay:
+              hours: 0
+              minutes: 1
+              seconds: 0
+          - service: cover.set_cover_position
+            target:
+              entity_id: cover.cover_ouest
+            data:
+              position: 10
+        alias: "Fermer les volets est"
 
-      - alias: "Fermer les volets ouest"
-        conditions:
+      - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule
             state: "on"
@@ -126,7 +124,6 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_ouest', 'position') | float(0) > 10}}
-        sequence:
           - service: cover.close_cover
             target:
               entity_id:
@@ -140,9 +137,9 @@
               entity_id: cover.cover_ouest
             data:
               position: 10
-
-      - alias: "Fermer les volets sud"
-        conditions:
+        alias: "Fermer les volets ouest"
+        
+      - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule
             state: "on"
@@ -156,7 +153,6 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_sud', 'position') | float(0) > 10}}
-        sequence:            
           - service: cover.close_cover
             target:
               entity_id:
@@ -170,7 +166,8 @@
               entity_id: cover.cover_sud
             data:
               position: 10
-
+        alias: "Fermer les volets sud"
+      
 
 - alias: Canicule - rouvrir volets après exposition
   id: canicule_open_cover
@@ -181,82 +178,78 @@
     - platform: time_pattern
       minutes: "/15"
   actions:
-      - choose:
-        - alias: "Rouvrir les volets est"
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.mode_canicule
-              state: "on"
-            - condition: template
-              value_template: >
-                {{ state_attr('sun.sun', 'azimuth') | float(0) > 140 }}
-            - condition: numeric_state
-              entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
-              below: 34
-            - condition: template
-              value_template: >
-                {{ state_attr('cover.cover_est', 'position') | float(0) < 50}}
-          sequence:                      
-            - service: cover.open_cover
-              target:
-                entity_id:
-                  - cover.salle_a_manger_grand
-            - delay:
-                hours: 0
-                minutes: 1
-                seconds: 0
-            - service: cover.set_cover_position
-              target:
-                entity_id:
-                  - cover.cover_est
-              data:
-                position: 60
-
-        - alias: "Rouvrir les volets ouest"
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.mode_canicule
-              state: "on"
-            - condition: template
-              value_template: >
-                {{ state_attr('sun.sun', 'azimuth') | float(0) > 320 }}
-            - condition: numeric_state
-              entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
-              below: 34
-            - condition: template
-              value_template: >
-                {{ state_attr('cover.cover_ouest', 'position') | float(0) < 50}}
-          sequence:                      
-            - service: cover.open_cover
-              target:
-                entity_id:
-                  - cover.cuisine
-            - delay:
-                hours: 0
-                minutes: 1
-                seconds: 0
-            - service: cover.set_cover_position
-              target:
-                entity_id:
-                  - cover.cover_ouest
-              data:
-                position: 60
-
-        - alias: "Rouvrir les volets est"
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.mode_canicule
-              state: "on"
-            - condition: template
-              value_template: >
-                {{ state_attr('sun.sun', 'azimuth') | float(0) > 240 }}
-            - condition: numeric_state
-              entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
-              below: 34
-            - condition: template
-              value_template: >
-                {{ state_attr('cover.cover_sud', 'position') | float(0) < 50}}
-          sequence:                      
+    - parallel:
+      - sequence:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: template
+            value_template: >
+              {{ state_attr('sun.sun', 'azimuth') | float(0) > 140 }}
+          - condition: numeric_state
+            entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
+            below: 34
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_est', 'position') | float(0) < 50}}
+          - service: cover.open_cover
+            target:
+              entity_id:
+                - cover.salle_a_manger_grand
+          - delay:
+              hours: 0
+              minutes: 1
+              seconds: 0
+          - service: cover.set_cover_position
+            target:
+              entity_id:
+                - cover.cover_est
+            data:
+              position: 60
+        alias: "Rouvrir les volets est"
+        
+      - sequence:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: template
+            value_template: >
+              {{ state_attr('sun.sun', 'azimuth') | float(0) > 320 }}
+          - condition: numeric_state
+            entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
+            below: 34
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_ouest', 'position') | float(0) < 50}}
+          - service: cover.open_cover
+            target:
+              entity_id:
+                - cover.cuisine
+          - delay:
+              hours: 0
+              minutes: 1
+              seconds: 0
+          - service: cover.set_cover_position
+            target:
+              entity_id:
+                - cover.cover_ouest
+            data:
+              position: 60
+        alias: "Rouvrir les volets ouest"
+      
+      - sequence:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: template
+            value_template: >
+              {{ state_attr('sun.sun', 'azimuth') | float(0) > 240 }}
+          - condition: numeric_state
+            entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
+            below: 34
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_sud', 'position') | float(0) < 50}}
           - service: cover.open_cover
             target:
               entity_id:
@@ -271,3 +264,5 @@
                 - cover.cover_sud
             data:
               position: 60
+        alias: "Rouvrir les volets est"
+      
