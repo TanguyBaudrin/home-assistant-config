@@ -103,7 +103,7 @@
               - cover.cuisine
         - delay:
             hours: 0
-            minutes: 5
+            minutes: 1
             seconds: 0
         - service: cover.set_cover_position
           target:
@@ -133,7 +133,7 @@
                 - cover.salle_a_manger_grand
           - delay:
               hours: 0
-              minutes: 5
+              minutes: 1
               seconds: 0
           - service: cover.set_cover_position
             target:
@@ -163,7 +163,7 @@
                 - cover.salle_a_manger_petit
           - delay:
               hours: 0
-              minutes: 5
+              minutes: 1
               seconds: 0
           - service: cover.set_cover_position
             target:
@@ -193,6 +193,9 @@
             - condition: numeric_state
               entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
               below: 34
+            - condition:
+              value_template: >
+                {{ state_attr('cover.cover_est', 'position') | float(0) < 50}}
           sequence:                      
             - service: cover.open_cover
               target:
@@ -200,7 +203,7 @@
                   - cover.salle_a_manger_grand
             - delay:
                 hours: 0
-                minutes: 5
+                minutes: 1
                 seconds: 0
             - service: cover.set_cover_position
               target:
@@ -220,6 +223,9 @@
             - condition: numeric_state
               entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
               below: 34
+            - condition:
+              value_template: >
+                {{ state_attr('cover.cover_ouest', 'position') | float(0) < 50}}
           sequence:                      
             - service: cover.open_cover
               target:
@@ -227,7 +233,7 @@
                   - cover.cuisine
             - delay:
                 hours: 0
-                minutes: 5
+                minutes: 1
                 seconds: 0
             - service: cover.set_cover_position
               target:
@@ -247,6 +253,9 @@
             - condition: numeric_state
               entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
               below: 34
+            - condition:
+              value_template: >
+                {{ state_attr('cover.cover_sud', 'position') | float(0) < 50}}
           sequence:                      
           - service: cover.open_cover
             target:
@@ -254,7 +263,7 @@
                 - cover.salle_a_manger_petit
           - delay:
               hours: 0
-              minutes: 5
+              minutes: 1
               seconds: 0
           - service: cover.set_cover_position
             target:
