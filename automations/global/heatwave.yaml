@@ -182,7 +182,7 @@
               value_template: >
                 {{ state_attr('sun.sun', 'azimuth') | float(0) > 140 }}
             - condition: numeric_state
-              entity_id: sensor.temperature_exterieure_meteo
+              entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
               below: 34
           sequence:                      
             - service: cover.open_cover
@@ -209,7 +209,7 @@
               value_template: >
                 {{ state_attr('sun.sun', 'azimuth') | float(0) > 320 }}
             - condition: numeric_state
-              entity_id: sensor.temperature_exterieure_meteo
+              entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
               below: 34
           sequence:                      
             - service: cover.open_cover
@@ -236,7 +236,7 @@
               value_template: >
                 {{ state_attr('sun.sun', 'azimuth') | float(0) > 240 }}
             - condition: numeric_state
-              entity_id: sensor.temperature_exterieure_meteo
+              entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
               below: 34
           sequence:                      
           - service: cover.open_cover
