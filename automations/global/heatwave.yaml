@@ -131,7 +131,7 @@
               seconds: 0
           - service: cover.set_cover_position
             target:
-              entity_id: cover.cover_est
+              entity_id: cover.cover_ouest
             data:
               position: 10
 
@@ -158,7 +158,7 @@
               seconds: 0
           - service: cover.set_cover_position
             target:
-              entity_id: cover.cover_est
+              entity_id: cover.cover_sud
             data:
               position: 10
 
