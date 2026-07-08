@@ -459,3 +459,6 @@
     - name: "Azimuth soleil"
       unique_id: azimuth_sun
       state: "{{ state_attr('sun.sun', 'azimuth')}}"
+    - name: "Elevation soleil"
+      unique_id: elevation_sun
+      state: "{{ state_attr('sun.sun', 'elevation')}}"
