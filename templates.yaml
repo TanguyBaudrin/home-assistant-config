@@ -458,4 +458,4 @@
 - sensor:
     - name: "Azimuth soleil"
       unique_id: azimuth_sun
-      state: "{{ state_attr("sun.sun", "azimuth")}}"
+      state: "{{ state_attr('sun.sun', 'azimuth')}}"
