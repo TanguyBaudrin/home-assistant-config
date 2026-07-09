@@ -192,6 +192,9 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_est', 'current_position') | float(0) < 50}}
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_est', 'current_position') | float(0) > 0}}
           - service: cover.open_cover
             target:
               entity_id:
@@ -221,6 +224,9 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_ouest', 'current_position') | float(0) < 50}}
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_ouest', 'current_position') | float(0) > 0}}
           - service: cover.open_cover
             target:
               entity_id:
@@ -250,6 +256,9 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_sud', 'current_position') | float(0) < 50}}
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_sud', 'current_position') | float(0) > 0 }}
           - service: cover.open_cover
             target:
               entity_id:
