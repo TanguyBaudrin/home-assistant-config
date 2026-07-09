@@ -150,22 +150,10 @@
           - condition: template
             value_template: >
               {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }} 
-          - condition: template
-            value_template: >
-              {{ state_attr('cover.cover_sud', 'current_position') | float(0) > 10}}
           - service: cover.close_cover
             target:
               entity_id:
                 - cover.salle_a_manger_petit
-          - delay:
-              hours: 0
-              minutes: 1
-              seconds: 0
-          - service: cover.set_cover_position
-            target:
-              entity_id: cover.cover_sud
-            data:
-              position: 10
         alias: "Fermer les volets sud"
       
 
@@ -256,21 +244,10 @@
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_sud', 'current_position') | float(0) < 50}}
-          - condition: template
-            value_template: >
-              {{ state_attr('cover.cover_sud', 'current_position') | float(0) > 0 }}
           - service: cover.open_cover
             target:
               entity_id:
                 - cover.salle_a_manger_petit
-          - delay:
-              hours: 0
-              minutes: 1
-              seconds: 0
-          - service: cover.set_cover_position
-            target:
-              entity_id:
-                - cover.cover_sud
             data:
               position: 60
         alias: "Rouvrir les volets est"
