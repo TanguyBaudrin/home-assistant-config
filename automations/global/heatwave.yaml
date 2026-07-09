@@ -237,18 +237,13 @@
             state: "on"
           - condition: template
             value_template: >
-              {{ state_attr('sun.sun', 'azimuth') | float(0) > 240 }}
+              {{ state_attr('sun.sun', 'azimuth') | float(0) > 270 }}
           - condition: numeric_state
             entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
             below: 34
-          - condition: template
-            value_template: >
-              {{ state_attr('cover.cover_sud', 'current_position') | float(0) < 50}}
           - service: cover.open_cover
             target:
               entity_id:
                 - cover.salle_a_manger_petit
-            data:
-              position: 60
         alias: "Rouvrir les volets est"
       
