@@ -198,7 +198,7 @@
           - service: cover.open_cover
             target:
               entity_id:
-                - cover.salle_a_manger_grand
+                - cover.cuisine
           - delay:
               hours: 0
               minutes: 1
@@ -230,7 +230,7 @@
           - service: cover.open_cover
             target:
               entity_id:
-                - cover.cuisine
+                - cover.salle_a_manger_grand
           - delay:
               hours: 0
               minutes: 1
