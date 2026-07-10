@@ -99,16 +99,28 @@
             target:
               entity_id:
                 - cover.cuisine
-          - delay:
-              hours: 0
-              minutes: 1
-              seconds: 0
+        alias: "Fermer les volets est"
+
+      - sequence:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            above: 10
+          - condition: template
+            value_template: >
+              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }} 
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_est', 'current_position') | float(0) > 10}} 
           - service: cover.set_cover_position
             target:
               entity_id: cover.cover_est
             data:
               position: 10
-        alias: "Fermer les volets est"
+        alias: "Fermer les velux est"
 
       - sequence:
           - condition: state
@@ -128,16 +140,29 @@
             target:
               entity_id:
                 - cover.salle_a_manger_grand
-          - delay:
-              hours: 0
-              minutes: 1
-              seconds: 0
+        alias: "Fermer les volets ouest"
+
+      
+      - sequence:
+          - condition: state
+            entity_id: binary_sensor.mode_canicule
+            state: "on"
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            above: 10
+          - condition: template
+            value_template: >
+              {{ 160 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }} 
+          - condition: template
+            value_template: >
+              {{ state_attr('cover.cover_ouest', 'current_position') | float(0) > 10}}
           - service: cover.set_cover_position
             target:
               entity_id: cover.cover_ouest
             data:
               position: 10
-        alias: "Fermer les volets ouest"
+        alias: "Fermer les velux ouest"
         
       - sequence:
           - condition: state
