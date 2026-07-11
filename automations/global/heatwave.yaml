@@ -8,9 +8,9 @@
       minutes: "/10"
 
   condition:
-    - condition: time
-      after: "18:00:00"
-      before: "22:00:00"
+    - condition: state
+      entity_id: binary_sensor.mode_jour
+      state: "on"
     - condition: template
       value_template: >
         {{ states('sensor.temperature_moyenne_de_la_maison') | float(0) >= 24 }}
@@ -45,13 +45,13 @@
       minutes: "/10"
 
   condition:
-    - condition: time
-      after: "07:00:00"
-      before: "12:00:00"
+    - condition: state
+      entity_id: binary_sensor.mode_jour
+      state: "on"
     - condition: template
       value_template: >
         {{ (states('sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure') | float(0) -
-            states('sensor.temperature_moyenne_de_la_maison') | float(0)) >= 0.5 }}
+            states('sensor.temperature_moyenne_de_la_maison') | float(0)) >= 1 }}
     - condition: state
       entity_id: binary_sensor.mode_canicule
       state: "on"
