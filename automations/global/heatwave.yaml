@@ -8,6 +8,9 @@
       minutes: "/10"
 
   condition:
+    - condition: template
+      value_template: >-
+        {{ now() - state_attr("automation.canicule_notification_free_cooling_efficace", "last_triggered") > timedelta(0.5) }}
     - condition: state
       entity_id: binary_sensor.mode_jour
       state: "on"
@@ -45,6 +48,9 @@
       minutes: "/10"
 
   condition:
+    - condition: template
+    value_template: >-
+      {{ now() - state_attr("automation.canicule_fermer_les_fenetres_le_matin", "last_triggered") > timedelta(0.5) }}
     - condition: state
       entity_id: binary_sensor.mode_jour
       state: "on"
