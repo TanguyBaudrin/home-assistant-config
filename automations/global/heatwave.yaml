@@ -79,7 +79,7 @@
     - platform: time_pattern
       minutes: "/10"
   conditions:
-    - condition:
+    - condition: state
       entity_id: binary_sensor.mode_jour
       state: "on"
   actions:
@@ -194,7 +194,7 @@
     - platform: time_pattern
       minutes: "/15"
   conditions:
-    - condition:
+    - condition: state
       entity_id: binary_sensor.mode_jour
       state: "on"
   actions:
