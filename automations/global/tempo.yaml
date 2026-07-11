@@ -1,0 +1,96 @@
+
+- id: 'tempo_state_changed'
+  alias: '[Maison] Changement condition RTE tempo'
+  description: ''
+  triggers:
+  - type: turned_on
+    device_id: 8e593b8e10f5eb1417a460f71c9d4cf3
+    entity_id: c9b249b9333bf862966e0ad3b5f0b763
+    domain: binary_sensor
+    metadata:
+      secondary: false
+    trigger: device
+    id: HC Activé
+  - type: turned_off
+    device_id: 8e593b8e10f5eb1417a460f71c9d4cf3
+    entity_id: c9b249b9333bf862966e0ad3b5f0b763
+    domain: binary_sensor
+    trigger: device
+    id: HC Désactivé
+  conditions: []
+  actions:
+  - if:
+    - condition: trigger
+      id:
+      - HC Activé
+    then:
+    - choose:
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Bleu
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Bleu HC
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Blanc
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Blanc HC
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Rouge
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Rouge HC
+          target:
+            entity_id: select.consommation_rte_tempo
+    else:
+    - choose:
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Bleu
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Bleu HP
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Blanc
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Blanc HP
+          target:
+            entity_id: select.consommation_rte_tempo
+      - conditions:
+        - condition: state
+          entity_id: sensor.rte_tempo_couleur_actuelle
+          state: Rouge
+        sequence:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Rouge HP
+          target:
+            entity_id: select.consommation_rte_tempo
+  mode: single

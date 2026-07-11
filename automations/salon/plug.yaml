@@ -1,0 +1,55 @@
+
+- id: 'tv_plug_automation'
+  alias: Auto - Salon - Prise TV - Automatiser l'allumage/extinction de la prise
+  description: ''
+  triggers:
+  - device_id: 9211d9c11a02bd5ddef116d430e0ead1
+    domain: media_player
+    entity_id: dc7f2bab408447fd1c5f891b2c9fec6b
+    type: turned_on
+    trigger: device
+    id: Allumage
+  - device_id: 9211d9c11a02bd5ddef116d430e0ead1
+    domain: media_player
+    entity_id: dc7f2bab408447fd1c5f891b2c9fec6b
+    type: turned_off
+    trigger: device
+    id: Extinction
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Allumage
+      sequence:
+      - type: turn_on
+        device_id: 364329340b52f4f42a08dfdf3305ac40
+        entity_id: c1372e3502b37b9c3d41bf0b21e86e46
+        domain: switch
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 3
+      - action: rest_command.sony_bravia_tv_set_audio_output
+        metadata: {}
+        data:
+          url: http://10.0.3.175
+    - conditions:
+      - condition: trigger
+        id:
+        - Extinction
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+      - condition: state
+        entity_id: remote.sony_kd_75xh9096
+        state: 'off'
+      - type: turn_off
+        device_id: 364329340b52f4f42a08dfdf3305ac40
+        entity_id: c1372e3502b37b9c3d41bf0b21e86e46
+        domain: switch
+  mode: single

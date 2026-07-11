@@ -1,0 +1,108 @@
+- id: open_day_cover
+  alias: Auto - Maison - Volets - Gestion des volets basé sur les horaires et le soleil
+  description: |
+    Ouvre les volets et désactive les automatismes lumineux le matin au réveil ou au lever du soleil.
+    Réinitialise le flag lumieres_desactivees_par_media pour éviter que Jellyfin ne restaure les lumières
+    après que cette automation les ait désactivées. (Modifié le 2026-03-06)
+  triggers:
+  - trigger: state
+    entity_id:
+      - binary_sensor_.mode_jour
+    to:
+      - 'on'
+  actions:
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.lumieres_desactivees_par_media
+  - data: {}
+    target:
+      entity_id: input_boolean.lumieres_automatiques
+    alias: Désactivation de l'éclairage automatique
+    action: input_boolean.turn_off
+  - data: {}
+    target:
+      area_id:
+      - bureau
+      - chambre_des_parents
+      - cuisine
+      - salle_a_manger
+      - chambre_louis
+      - chambre_maxime
+    action: cover.open_cover
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id:
+      - salon
+      - salle_a_manger
+      - cuisine
+  mode: single
+- id: calculate_wakeup_jour
+  alias: Auto - Maison - Heure réveil - Définition de l'heure de réveil de la maison
+  description: ''
+  triggers:
+  - trigger: time
+    at: 01:00:00
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ state_attr("calendar.maison","message") == "Weekend"
+            }}'
+        - condition: state
+          entity_id: calendar.maison
+          state: 'on'
+      sequence:
+      - action: input_datetime.set_datetime
+        metadata: {}
+        data:
+          time: 09:30:00
+        target:
+          entity_id: input_datetime.heure_de_reveil_de_la_maison
+      alias: Le weekend
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: calendar.agnes
+          state: 'on'
+        - condition: template
+          value_template: '{{ "non travaillé".lower() in state_attr("calendar.agnes","message").lower()
+            }}'
+      sequence:
+      - action: input_datetime.set_datetime
+        metadata: {}
+        data:
+          time: 09:30:00
+        target:
+          entity_id: input_datetime.heure_de_reveil_de_la_maison
+      alias: Agnès jour non travaillé
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ "non travaillé".lower() in state_attr("calendar.tanguy","message").lower()
+            }}'
+        - condition: state
+          entity_id: calendar.tanguy
+          state: 'on'
+      sequence:
+      - action: input_datetime.set_datetime
+        metadata: {}
+        data:
+          time: 09:30:00
+        target:
+          entity_id: input_datetime.heure_de_reveil_de_la_maison
+      alias: Tanguy jour non travaillé
+    default:
+    - action: input_datetime.set_datetime
+      metadata: {}
+      data:
+        time: 07:00:00
+      target:
+        entity_id: input_datetime.heure_de_reveil_de_la_maison
+  mode: single

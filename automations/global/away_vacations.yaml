@@ -1,0 +1,39 @@
+- id: 'home_everyone_away'
+  alias: '[Maison] Automatisation quand tout le monde est absent'
+  description: ''
+  triggers:
+  - entity_id:
+    - person.agnes
+    - person.tanguy_baudrin
+    to: not_home
+    from: home
+    alias: Quand Agnès/Tanguy passent absent
+    trigger: state
+  conditions:
+  - condition: and
+    conditions:
+    - condition: state
+      entity_id: person.agnes
+      state: not_home
+    - condition: state
+      entity_id: person.tanguy_baudrin
+      state: not_home
+    alias: Agnès et Tanguy sont absents
+    enabled: true
+  actions:
+  - alias: Passer les caméras Arlo en mode armé
+    data: {}
+    target:
+      entity_id: alarm_control_panel.aarlo_location_home
+    action: alarm_control_panel.alarm_arm_away
+  - data:
+      preset_mode: away
+    target:
+      entity_id: climate.sejour
+    action: climate.set_preset_mode
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      area_id: bureau
+  mode: single

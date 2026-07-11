@@ -1,0 +1,41 @@
+
+- id: 'light_salon_auto'
+  alias: '[Salon] Gestion de la lumière avec capteur de présence'
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: 980a0228024674ae9c7c9020e34567d3
+    entity_id: 05c8ba1d26d43b0decfc652a3a1d4850
+    domain: binary_sensor
+    trigger: device
+    id: Occupé
+  - type: not_occupied
+    device_id: 980a0228024674ae9c7c9020e34567d3
+    entity_id: 05c8ba1d26d43b0decfc652a3a1d4850
+    domain: binary_sensor
+    trigger: device
+    id: Non occupé
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Occupé
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data: {}
+        target:
+          area_id: salon
+    - conditions:
+      - condition: trigger
+        id:
+        - Non occupé
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          area_id: salon
+  mode: single

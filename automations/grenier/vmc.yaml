@@ -103,3 +103,171 @@
             data:
               option: "{{ requested_speed }}"
   mode: restart
+
+- id: 'vmc_commute_management'
+  alias: Mode - Grenier - VMC - Gestion des commutateurs
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_select.interrupteur_vmc
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_select.interrupteur_vmc
+        state: 'Off'
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_lent
+          - switch.module_vmc_commutateur_rapide
+    - conditions:
+      - condition: state
+        entity_id: input_select.interrupteur_vmc
+        state: Vitesse 1
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_rapide
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_lent
+    - conditions:
+      - condition: state
+        entity_id: input_select.interrupteur_vmc
+        state: Vitesse 2
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.module_vmc_commutateur_lent
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.module_vmc_commutateur_rapide
+  mode: single
+
+
+- id: 'vmc_auto_speed'
+  alias: Auto - Grenier - VMC - Gestion des différentes vitesses
+  description: ''
+  triggers:
+  - trigger: time
+    at: '23:00:00'
+    id: A 23h
+  - trigger: time
+    at: 07:00:00
+    id: A 7h
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: leave
+    id: Agnes part
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: leave
+    id: Tanguy part
+  - trigger: zone
+    entity_id: person.agnes
+    zone: zone.home
+    event: enter
+    id: Agnès rentre
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: enter
+    id: Tanguy rentre
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - alias: Si déclenché par 23h ou départ, et personne n'est à la maison, ou il
+          est passé 23h
+        condition: and
+        conditions:
+        - alias: Agnès et tanguy sont absent, ou il est passé 23h
+          condition: or
+          conditions:
+          - condition: time
+            after: '22:59:00'
+          - condition: and
+            conditions:
+            - condition: not
+              conditions:
+              - condition: zone
+                entity_id: person.agnes
+                zone: zone.home
+              alias: Agnès n'est pas à la maison
+            - condition: not
+              conditions:
+              - condition: zone
+                entity_id: person.tanguy_baudrin
+                zone: zone.home
+              alias: Tanguy n'est pas à la maison
+            alias: Agnès et Tanguy ne sont pas là
+        - condition: trigger
+          id:
+          - A 23h
+          - Agnes part
+          - Tanguy part
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 30
+          seconds: 0
+          milliseconds: 0
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: 'Off'
+        target:
+          entity_id: input_select.interrupteur_vmc
+    - conditions:
+      - condition: trigger
+        id:
+        - A 7h
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 1
+        target:
+          entity_id: input_select.interrupteur_vmc
+    - conditions:
+      - condition: trigger
+        id:
+        - Tanguy rentre
+        - Agnès rentre
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 1
+        target:
+          entity_id: input_select.interrupteur_vmc
+  mode: restart
