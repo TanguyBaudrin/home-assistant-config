@@ -211,7 +211,7 @@
             state: "on"
           - condition: template
             value_template: >
-              {{ state_attr('sun.sun', 'azimuth') | float(0) > 200 }}
+              {{ state_attr('sun.sun', 'azimuth') | float(0) > 230 }}
           - condition: numeric_state
             entity_id: sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure
             below: 34
