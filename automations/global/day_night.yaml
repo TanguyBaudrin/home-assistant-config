@@ -8,7 +8,8 @@
   - trigger: state
     entity_id:
       - binary_sensor.mode_jour
-    to: 'on'
+    to:
+      - 'on'
   actions:
   - action: input_boolean.turn_off
     target:
