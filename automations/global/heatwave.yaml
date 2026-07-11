@@ -78,7 +78,10 @@
   trigger:
     - platform: time_pattern
       minutes: "/10"
-
+  conditions:
+    - condition:
+      entity_id: binary_sensor.mode_jour
+      state: "on"
   actions:
     - parallel:
       - sequence:
@@ -190,6 +193,10 @@
   trigger:
     - platform: time_pattern
       minutes: "/15"
+  conditions:
+    - condition:
+      entity_id: binary_sensor.mode_jour
+      state: "on"
   actions:
     - parallel:
       - sequence:

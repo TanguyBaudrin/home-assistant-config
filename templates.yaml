@@ -451,9 +451,13 @@
 - binary_sensor:
     - name: "Mode canicule"
       unique_id: mode_canicule
-      state: >
-        {{ states('sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure') | float(0) >= 30
-            or states('sensor.temperature_moyenne_de_la_maison') | float(0) >= 26 }}
+      state: >-
+        {{- states('sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure') | float(0) >= 30
+            or states('sensor.temperature_moyenne_de_la_maison') | float(0) >= 26 -}}
+    - name: "Mode jour"
+      unique_id: mode_jour
+      state: >-
+        {{- today_at(states('input_datetime.heure_de_reveil_de_la_maison')) <= now() and as_datetime([as_timestamp(as_datetime(state_attr("sun.sun", "next_dusk"))), as_timestamp(today_at("22:00"))] | min) >= utcnow() -}}
 
 - sensor:
     - name: "Azimuth soleil"
