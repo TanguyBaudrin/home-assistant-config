@@ -99,7 +99,7 @@ cover:
     name: "Cover ouest"
     entities:
       - cover.velux_external_cover_roller_shutter_3
-      - cover.velux_external_cover_roller_shutter_9
+      # - cover.velux_external_cover_roller_shutter_9
       - cover.velux_external_cover_roller_shutter_10
   - platform: group
     name: "Cover sud"
