@@ -9,3 +9,7 @@ prise_bureau_tanguy_confirm_refused:
 lumieres_desactivees_par_media:
   name: "Lumières désactivées par média"
   icon: mdi:play-circle-outline
+
+canicule_forcee:
+  name: "Canicule - Forçage manuel"
+  icon: mdi:weather-sunny-alert

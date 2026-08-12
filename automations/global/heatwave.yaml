@@ -284,4 +284,26 @@
               entity_id:
                 - cover.salle_a_manger_petit
         alias: "Rouvrir les volets est"
-      
+
+- alias: Canicule - Réinitialisation du forçage manuel
+  id: canicule_reset_manual_override
+  description: >
+    Réinitialise le forçage manuel du mode canicule pendant la nuit,
+    lorsque le mode jour se termine, afin que le forçage ne s'applique
+    qu'à la journée en cours.
+  mode: single
+
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.mode_jour
+      to: "off"
+
+  condition:
+    - condition: state
+      entity_id: input_boolean.canicule_forcee
+      state: "on"
+
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.canicule_forcee

@@ -452,7 +452,8 @@
     - name: "Mode canicule"
       unique_id: mode_canicule
       state: >-
-        {{- states('sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure') | float(0) >= 30
+        {{- states('input_boolean.canicule_forcee') == 'on'
+            or states('sensor.maison_meteo_france_forecast_for_city_wasquehal_nord_pas_de_calais_59_fr_temperature_exterieure') | float(0) >= 30
             or states('sensor.temperature_moyenne_de_la_maison') | float(0) >= 26 -}}
     - name: "Mode jour"
       unique_id: mode_jour
