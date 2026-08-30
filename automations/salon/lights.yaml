@@ -5,13 +5,13 @@
   triggers:
   - type: occupied
     device_id: 980a0228024674ae9c7c9020e34567d3
-    entity_id: 05c8ba1d26d43b0decfc652a3a1d4850
+    entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_sensor_3
     domain: binary_sensor
     trigger: device
     id: Occupé
   - type: not_occupied
     device_id: 980a0228024674ae9c7c9020e34567d3
-    entity_id: 05c8ba1d26d43b0decfc652a3a1d4850
+    entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_sensor_3
     domain: binary_sensor
     trigger: device
     id: Non occupé
@@ -27,7 +27,7 @@
         metadata: {}
         data: {}
         target:
-          area_id: salon
+          area_id: salle_a_manger
     - conditions:
       - condition: trigger
         id:
@@ -37,5 +37,5 @@
         metadata: {}
         data: {}
         target:
-          area_id: salon
+          area_id: salle_a_manger
   mode: single
