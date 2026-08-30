@@ -17,7 +17,7 @@
       area_id: salle_a_manger
   - wait_for_trigger:
     - entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_sensor_3
-      to: not_occupied
+      to: off
       for:
         seconds: 600
       trigger: state
