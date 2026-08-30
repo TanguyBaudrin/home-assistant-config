@@ -2,6 +2,7 @@
 - id: 'light_salon_auto'
   alias: '[Salon] Gestion de la lumière avec capteur de présence'
   description: ''
+  mode: restart
   triggers:
   - type: occupied
     device_id: 980a0228024674ae9c7c9020e34567d3
@@ -9,33 +10,21 @@
     domain: binary_sensor
     trigger: device
     id: Occupé
-  - type: not_occupied
-    device_id: 980a0228024674ae9c7c9020e34567d3
-    entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_sensor_3
-    domain: binary_sensor
-    trigger: device
-    id: Non occupé
   conditions: []
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Occupé
-      sequence:
-      - action: light.turn_on
-        metadata: {}
-        data: {}
-        target:
-          area_id: salle_a_manger
-    - conditions:
-      - condition: trigger
-        id:
-        - Non occupé
-      sequence:
-      - action: light.turn_off
-        metadata: {}
-        data: {}
-        target:
-          area_id: salle_a_manger
-  mode: single
+  - action: light.turn_on
+    target:
+      area_id: salle_a_manger
+  - wait_for_trigger:
+    - entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_sensor_3
+      to: not_occupied
+      for:
+        seconds: 600
+      trigger: state
+  timeout:
+    hours: 24
+  continue_on_timeout: false
+  - action: light.turn_off
+    target:
+      area_id: salle_a_manger
+  
