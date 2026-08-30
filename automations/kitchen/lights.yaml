@@ -7,8 +7,8 @@
     (Modifié le 2026-02-24 : migration de light.lumiere_cuisine vers switch.interupteur_mural_lumieres)
   trigger:
     - platform: state
-      entity_id: binary_sensor.motion_sensor_motion_detection
-      to: 'on'
+      entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_dans_le_canape
+      to: 'occupied'
   condition: []
   action:
     - service: switch.turn_on
@@ -16,8 +16,8 @@
         entity_id: switch.interupteur_mural_lumieres
     - wait_for_trigger:
         - platform: state
-          entity_id: binary_sensor.motion_sensor_motion_detection
-          to: 'off'
+          entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_dans_le_canape
+          to: 'not_occupied'
           for:
             seconds: 600
       timeout:
