@@ -21,9 +21,9 @@
       for:
         seconds: 600
       trigger: state
-  timeout:
-    hours: 24
-  continue_on_timeout: false
+    timeout:
+      hours: 1
+    continue_on_timeout: false
   - action: light.turn_off
     target:
       area_id: salle_a_manger
