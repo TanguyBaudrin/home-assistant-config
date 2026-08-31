@@ -19,7 +19,7 @@
     - entity_id: binary_sensor.presence_sensor_fp2_d3fe_presence_sensor_3
       to: "off"
       for:
-        seconds: 600
+        seconds: 120
       trigger: state
     timeout:
       hours: 1
