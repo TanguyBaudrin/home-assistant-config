@@ -22,13 +22,26 @@ HASS_SERVER = "http://homeassistant.local:8123"
 # Optional: Set timeout for operations (in seconds)
 # HASS_TIMEOUT = "10"
 
+# Image Home Assistant utilisee par `mise run ha-check` et par la CI.
+# Epinglee pour que la validation soit reproductible : ne pas passer en
+# "stable", car un changement de version ferait echouer la CI sans commit.
+HA_IMAGE = "ghcr.io/home-assistant/home-assistant:2026.9.4"
+
 [tools]
+# uv is the installer backend that mise uses for the Python tools below. It must
+# be pinned in this repository rather than globally (`mise use -g uv@...`),
+# otherwise `mise run validate` fails with "No version is set for shim: uv" on
+# any machine that has not set a global default. Pinning it here also makes the
+# self-hosted runner and CI install the same toolchain as a developer machine.
+uv = "0.12.10"
+
 # Home Assistant CLI - command line tool for Home Assistant
-# Installed via pipx for isolation
-"pipx:homeassistant-cli" = "latest"
+"pipx:homeassistant-cli" = "1.0.0"
 
 # Additional useful tools for HA development
-yamllint = "latest"
+# Pinned, not "latest": the CI workflow runs yamllint 1.38.0 and the local run
+# must not drift from it.
+yamllint = "1.38.0"
 pre-commit = "latest"
 
 [tasks.validate]
@@ -37,6 +50,13 @@ run = """
 echo "Validating Home Assistant configuration..."
 yamllint --strict .
 echo "✓ Configuration validation complete"
+"""
+
+[tasks.ci]
+description = "Run the same checks as GitHub Actions (yamllint + check_config)"
+depends = ["validate", "ha-check"]
+run = """
+echo "✓ All CI checks passed"
 """
 
 [tasks.ha-info]
@@ -85,12 +105,20 @@ hass-cli state list | grep -i "${usage_pattern}" || echo "No entities found matc
 
 [tasks.ha-check]
 description = "Check Home Assistant configuration files"
-run = "docker run -it --rm -v $(pwd):/config ghcr.io/home-assistant/home-assistant:stable -- python -m homeassistant --script check_config --config /config"
+# -it est volontairement absent : la commande doit fonctionner en CI, où aucun
+# TTY n'est disponible. Le montage fournit à la fois le dépôt et les bouchons
+# d'intégration de .ci, qui ne sont pas versionnés à la racine (gitignore).
+run = """
+docker run --rm \
+  -v "$(pwd):/config" \
+  -v "$(pwd)/.ci/secrets.yaml:/config/secrets.yaml:ro" \
+  -v "$(pwd)/.ci/custom_components:/config/custom_components:ro" \
+  "$HA_IMAGE" \
+  python -m homeassistant --script check_config --config /config
+"""
+
 
 [settings]
-# Automatically answer yes to prompts
-yes = false
-
 # Number of parallel jobs for tool installation
 jobs = 4
 

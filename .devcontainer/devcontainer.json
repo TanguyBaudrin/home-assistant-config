@@ -1,14 +1,14 @@
 {
   "name": "Home Assistant YAML Devcontainer",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "Dockerfile"
   },
   "workspaceFolder": "/workspaces",
   "customizations": {
     "vscode": {
       "settings": {
         "yaml.schemas": {
-          "https://json.schemastore.org/github-workflow.json": "/*.github/workflows/*.{yml,yaml}"
+          "https://json.schemastore.org/github-workflow.json": ["/workspaces/.github/workflows/*.yml", "/workspaces/.github/workflows/*.yaml"]
         },
         "editor.tabSize": 2,
         "editor.insertSpaces": true,

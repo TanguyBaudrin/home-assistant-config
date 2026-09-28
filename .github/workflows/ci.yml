@@ -1,0 +1,53 @@
+# Lint YAML rapide sur chaque push et pull request.
+#
+# Cette validation ne demarre aucun conteneur et ne contacte aucune API : c'est
+# le seul travail qui tourne sur un runner heberge par GitHub. La validation
+# Home Assistant reelle est dans ha-check.yml.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer yamllint
+        run: python -m pip install --disable-pip-version-check "yamllint==1.38.0"
+
+      # Meme configuration et meme mode que `mise run validate` et que le hook
+      # pre-commit : les exclusions des blueprints tiers vivent dans .yamllint.
+      - name: Valider le YAML
+        run: yamllint --strict .
+
+      - name: Verifier que le JSON est valide
+        # opencode.json et les fichiers devcontainer sont lus par des outils qui
+        # n'echouent pas proprement sur un JSON malforme.
+        run: |
+          for f in opencode.json .devcontainer/devcontainer.json; do
+            if [ -f "$f" ]; then
+              echo "::group::$f"
+              python -m json.tool "$f" > /dev/null
+              echo "::endgroup::"
+            fi
+          done

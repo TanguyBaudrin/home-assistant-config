@@ -3,6 +3,10 @@
 .ssh
 .storage
 custom_components
+
+# ... sauf les bouchons de validation CI, qui doivent etre versionnes.
+!/.ci/custom_components/
+
 deps
 themes
 esphome
@@ -18,7 +22,12 @@ zigbee*
 
 secrets.yaml
 
-opencode.json
+# ... sauf les valeurs factices de .ci, qui ne contiennent aucun secret reel
+# et doivent etre versionnees pour que check_config fonctionne en CI.
+!/.ci/secrets.yaml
+
+# opencode.json est versionne : il ne contient que des references
+# {env:VARIABLE}, jamais de valeur de secret en clair.
 
 # Mise local configuration (contains secrets)
 mise.local.toml

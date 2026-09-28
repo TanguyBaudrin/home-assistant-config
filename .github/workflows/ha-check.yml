@@ -1,0 +1,67 @@
+# Validation de la configuration avec le vrai code Home Assistant.
+#
+# check_config demarre le code de la version epinglee (HA_IMAGE dans mise.toml,
+# reprise ici) dans un conteneur jetable. Aucun secret reel n'est monte : le
+# fichier .ci/secrets.yaml ne contient que des valeurs factices, et les
+# integrations absentes du depot sont remplacees par des bouchons.
+name: HA Check
+
+# NOTE - messages d'erreur attendus dans un depot propre
+#
+# Une dizaine d'automatisations utilisent le declencheur `trigger: device`.
+# Elles journalisent "Unknown device '<id>'" puis sont desactivees, car un
+# depot propre n'a pas de .storage : le registre des appareils est cree sur
+# l'instance reelle et n'est pas versionne. Ce comportement est normal, et
+# check_config retourne quand meme 0.
+#
+# On ne fournit donc PAS de registre factice : il serait couple au schema
+# interne de Home Assistant (STORAGE_VERSION_MAJOR/MINOR), qui change a chaque
+# version, pour ne supprimer que du bruit de journal. Le code de retour de
+# check_config reste le seul critere de reussite.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ha-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-config:
+    name: check_config
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Doit rester aligne sur HA_IMAGE de mise.toml. Ne pas utiliser
+      # ":stable" : la validation doit etre reproductible.
+      HA_IMAGE: ghcr.io/home-assistant/home-assistant:2026.9.4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verifier les fichiers de validation
+        # Un montage silencieusement incorrect (fichier absent) ferait passer
+        # check_config sans secrets ni bouchons, donc avec une configuration
+        # moins valide qu'en production. On verifie que les deux sont la avant
+        # de lancer la validation.
+        run: |
+          set -euo pipefail
+          test -f .ci/secrets.yaml
+          test -f .ci/custom_components/rflink/manifest.json
+          test -f .ci/custom_components/battery_notes/manifest.json
+          test -f .ci/custom_components/circadian_lighting/manifest.json
+          echo "Secrets factices et bouchons d'integration presents."
+
+      - name: Valider la configuration
+        run: |
+          docker run --rm \
+            -v "$PWD:/config" \
+            -v "$PWD/.ci/secrets.yaml:/config/secrets.yaml:ro" \
+            -v "$PWD/.ci/custom_components:/config/custom_components:ro" \
+            "$HA_IMAGE" \
+            python -m homeassistant --script check_config --config /config
