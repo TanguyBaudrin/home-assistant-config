@@ -1,0 +1,139 @@
+# Correction automatique des points bloquants.
+#
+# Declenche par l'etiquette `factory/needs-fix` posee par factory-review.yml.
+#
+# Pourquoi la CLI et pas l'action opencode : l'entree `agent:` de l'action est
+# inoperante dans la CLI publiee (elle ne lit jamais la variable AGENT), et
+# `default_agent` ne peut prendre qu'une seule valeur par depot. Comme le
+# relecteur doit rester en lecture seule et le correcteur doit ecrire, il faut
+# deux invocations distinctes : l'action pour le relecteur, `opencode run
+# --agent` pour le correcteur.
+#
+# Une delegation via l'outil Task depuis le relecteur vers un sous-agent
+# ecrivant a ete ecartee : le relecteur pourrait alors etre pilote par une
+# instruction cachee dans une pull request.
+name: Factory Fix
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: factory-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  NEEDS_FIX_LABEL: factory/needs-fix
+
+jobs:
+  fix:
+    name: Correction
+    if: >-
+      github.event.label.name == 'factory/needs-fix' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, ha-factory]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout la branche de la pull request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Verifier l'etiquette
+        id: guard
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = (context.payload.pull_request?.labels ?? []).map(l => l.name);
+            const attempts = labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length;
+            core.setOutput('attempts', String(attempts));
+
+      - name: Preparer le prompt de correction
+        id: prompt
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = { owner: context.repo.owner, repo: context.repo.repo,
+                         issue_number: context.issue.number };
+            const comments = await github.paginate(github.rest.issues.listComments,
+                                                  { ...pr, per_page: 100 });
+            const last = comments[comments.length - 1];
+            if (!last || !(last.body ?? '').includes('VERDICT: BLOQUANT')) {
+              core.setFailed('Aucun commentaire de revue bloquante trouve.');
+              return;
+            }
+            const template = require('fs').readFileSync('.github/prompts/fix.md', 'utf8');
+            const value = template.replace('{{REVIEW_BODY}}', last.body);
+            core.setOutput('body', value);
+
+      - name: Installer opencode
+        id: install
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.opencode/bin
+          curl -fsSL https://opencode.ai/install | bash
+          echo "installed=$(~/.opencode/bin/opencode --version)" >> "$GITHUB_OUTPUT"
+
+      # Les variables OmniRoute et HASS_* sont deja dans l'environnement du
+      # runner : elles viennent de son /etc/ha-factory/runner.env, pas des
+      # secrets GitHub.
+      - name: Corriger avec l'agent
+        env:
+          PROMPT_BODY: ${{ steps.prompt.outputs.body }}
+        run: |
+          set -euo pipefail
+          ~/.opencode/bin/opencode run \
+            --agent factory-fix \
+            --model omniroute/agnes/agnes-2.5-flash \
+            "$PROMPT_BODY" 2>&1 | tee agent-output.log
+
+      - name: Verifier et pousser les corrections
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const attempts = Number('${{ steps.guard.outputs.attempts }}') + 1;
+            const run = async (cmd, args) =>
+              await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
+
+            // yamllint doit passer AVANT de pousser : pousser du YAML invalide
+            // ferait echouer la CI, et l'agent serait rapele en boucle.
+            const lint = await run('yamllint', ['--strict', '.']);
+            core.info(lint.output);
+            if (lint.exit_code !== 0) {
+              await core.setFailed(
+                'yamllint --strict a echoue : corrections non poussees. '
+                + 'Voir le journal ci-dessus.');
+              return;
+            }
+
+            const status = await run('git', ['status', '--porcelain']);
+            core.info(status.output);
+            if (!status.output.trim()) {
+              core.warning('Aucune modification : point non corrigeable, escalade.');
+              await github.rest.issues.addLabels({ ...context.issue,
+                labels: [`factory/attempt-${attempts}`, 'factory/escalade'] });
+              return;
+            }
+
+            await run('git', ['add', '-A']);
+            await run('git', ['commit', '-m',
+              `fix: corrections de la revue automatique (essai ${attempts})`]);
+            const push = await run('git', ['push', 'origin',
+              `HEAD:${context.payload.pull_request.head.ref}`]);
+            core.info(push.output);
+            if (push.exit_code !== 0) {
+              await core.setFailed('Le push a echoue.');
+              return;
+            }
+            // Retire l'etiquette de depart et marque l'essai : c'est ce commit
+            // qui rededclenche factory-review.yml.
+            await github.rest.issues.removeLabel({ ...context.issue,
+              name: process.env.NEEDS_FIX_LABEL }).catch(() => {});
+            await github.rest.issues.addLabels({ ...context.issue,
+              labels: [`factory/attempt-${attempts}`] });

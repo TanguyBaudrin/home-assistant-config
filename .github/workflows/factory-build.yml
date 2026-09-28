@@ -1,0 +1,203 @@
+# Transformation d'une issue en pull request.
+#
+# Declenche par l'etiquette `factory/build`.
+#
+# Controle de securite principal : sur un depot public, n'importe qui peut
+# ouvrir une issue, et ce job s'execute sur un runner auto-heberge qui herite
+# HASS_TOKEN. Le declencheur est donc volontairement une ETIQUETTE, qu'un
+# mainteneur peut poser : une issue non relue n'est jamais traitee par l'agent.
+# Le corps de l'issue est de surcroit traite comme une donnee, pas comme un
+# ordre (voir .opencode/agents/factory-build.md).
+name: Factory Build
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Numero de l'issue a traiter"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: factory-build-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+env:
+  TRIGGER_LABEL: factory/build
+  BRANCH_PREFIX: factory/build/
+
+jobs:
+  build:
+    name: Construction
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'factory/build'
+    runs-on: [self-hosted, ha-factory]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reclamer l'issue
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const number = Number('${{ github.event.issue.number || inputs.issue_number }}');
+            if (!Number.isFinite(number) || number < 1) {
+              await core.setFailed('Numero d\'issue invalide.');
+              return;
+            }
+            const issue = (await github.rest.issues.get({
+              ...context.repo, issue_number: number,
+            })).data;
+            if (issue.state !== 'open') {
+              core.info('Issue fermee : rien a faire.');
+              core.setOutput('skip', 'true'); return;
+            }
+            if ((issue.pull_request ?? null) !== null) {
+              await core.setFailed('Ce numero designe une pull request, pas une issue.');
+              return;
+            }
+            // Garde-fou : une issue deja traitee ne doit pas etre rejouee.
+            const open = await github.paginate(github.rest.pulls.list, {
+              ...context.repo, state: 'open', per_page: 100,
+            });
+            const ref = `issue-${number}`;
+            if (open.some(p => p.head.ref.endsWith(ref) || (p.body ?? '').includes(`<!-- issue ${number} -->`))) {
+              core.info('Une pull request ouverte traite deja cette issue.');
+              core.setOutput('skip', 'true'); return;
+            }
+            const title = issue.title || 'sans titre';
+            const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '').slice(0, 40) || 'issue';
+            core.info(`Issue ${number} : ${title}`);
+            core.setOutput('skip', 'false');
+            core.setOutput('number', String(number));
+            core.setOutput('title', title);
+            core.setOutput('body', issue.body ?? '');
+            core.setOutput('branch', `${process.env.BRANCH_PREFIX}${ref}-${slug}`);
+
+      - name: Preparer le prompt
+        if: steps.issue.outputs.skip != 'true'
+        id: prompt
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          TEMPLATE: ${{ steps.issue.outputs.body }}
+        run: |
+          set -euo pipefail
+          # Heredoc delimiter unique : le corps de l'issue peut contenir
+          # n'importe quoi, y compris la ligne de fin.
+          {
+            echo 'body<<FACTORY_PROMPT_EOF'
+            sed -e "s/{{ISSUE_NUMBER}}/${ISSUE_NUMBER}/" \
+                -e "s|{{ISSUE_TITLE}}|${ISSUE_TITLE}|" \
+                -e "s|{{ISSUE_BODY}}|${TEMPLATE}|" \
+                .github/prompts/build.md
+            echo 'FACTORY_PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Installer opencode
+        if: steps.issue.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.opencode/bin
+          curl -fsSL https://opencode.ai/install | bash
+          ~/.opencode/bin/opencode --version
+
+      # Les variables OmniRoute viennent de l'environnement du runner
+      # (/etc/ha-factory/runner.env), pas des secrets GitHub.
+      - name: Construire avec l'agent
+        if: steps.issue.outputs.skip != 'true'
+        env:
+          PROMPT_BODY: ${{ steps.prompt.outputs.body }}
+        run: ~/.opencode/bin/opencode run --agent factory-build --model omniroute/agnes/agnes-2.5-flash "$PROMPT_BODY" 2>&1 | tee agent-output.log
+
+      - name: Valider et ouvrir la pull request
+        if: steps.issue.outputs.skip != 'true'
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          BRANCH: ${{ steps.issue.outputs.branch }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const run = async (cmd, args) =>
+              await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
+
+            const status = await run('git', ['status', '--porcelain']);
+            core.info(status.output);
+            if (!status.output.trim()) {
+              await core.setFailed("Aucune modification : voir agent-output.log.");
+              return;
+            }
+
+            // Le perimetre autorise est fixe par l'agent. On le verifie ici
+            // aussi : une pull request ne doit pas pouvoir toucher la CI.
+            const ALLOWED = /^(automations|scripts|scenes|blueprints)\//;
+            const ALLOWED_FILES = new Set(['templates.yaml', 'input_numbers.yaml', 'aarlo.yaml']);
+            const touched = status.output.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
+            const refused = touched.filter(p => !ALLOWED.test(p) && !ALLOWED_FILES.has(p));
+            if (refused.length) {
+              await core.setFailed('Fichiers hors perimetre : ' + refused.join(', '));
+              return;
+            }
+            core.info('Perimetre respecte : ' + touched.join(', '));
+
+            const lint = await run('yamllint', ['--strict', '.']);
+            core.info(lint.output);
+            if (lint.exit_code !== 0) {
+              await core.setFailed("yamllint --strict a echoue : rien n'est pousse.");
+              return;
+            }
+
+            await run('git', ['add', '-A']);
+            await run('git', ['reset', '-q', 'agent-output.log']);
+            await run('git', ['commit', '-m',
+              `feat: ${process.env.ISSUE_TITLE} (#${process.env.ISSUE_NUMBER})`]);
+            await run('git', ['branch', '-M', process.env.BRANCH]);
+            const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
+            core.info(push.output);
+            if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
+
+            const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);
+            const pull = await github.rest.pulls.create({
+              ...context.repo,
+              head: process.env.BRANCH,
+              base: context.payload.repository.default_branch,
+              title: `${process.env.ISSUE_TITLE} (#${process.env.ISSUE_NUMBER})`,
+              body: [
+                `Cloture #${process.env.ISSUE_NUMBER}`,
+                '',
+                '<!-- issue ' + process.env.ISSUE_NUMBER + ' -->',
+                '',
+                'Produite par la factory. **Jamais fusionnee automatiquement.**',
+                '- Ne pas editer cette branche a la main : la factory la remplace.',
+                '',
+                '<details><summary>Rapport de l\'agent</summary>',
+                '', report, '', '</details>',
+              ].join('\n'),
+            });
+            core.info('Pull request : ' + pull.html_url);
+
+            // Retirer l'etiquette declencheuse : l'issue est desormais suivie
+            // par la pull request, pas par un second passage de l'agent.
+            if (github.event_name !== 'workflow_dispatch') {
+              await github.rest.issues.removeLabel({
+                ...context.repo, issue_number: Number(process.env.ISSUE_NUMBER),
+                name: process.env.TRIGGER_LABEL,
+              }).catch(() => {});
+            }

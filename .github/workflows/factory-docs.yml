@@ -1,0 +1,127 @@
+# Entretien de la documentation, une fois par semaine.
+#
+# Ce job n'ouvre une pull request que si la configuration a reellement change
+# depuis la derniere mise a jour de la documentation. Un rapport hebdomadaire vide
+# est du bruit : mieux vaut ne rien proposer que d'ouvrir une pull request sans
+# contenu.
+name: Factory Docs
+
+on:
+  schedule:
+    # 04:23 le dimanche UTC.
+    - cron: '23 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: factory-docs
+  cancel-in-progress: false
+
+jobs:
+  docs:
+    name: Documentation
+    runs-on: [self-hosted, ha-factory]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determiner s'il y a du travail
+        id: stale
+        run: |
+          set -euo pipefail
+          # Derniere modification de la configuration, hors CI et hors usine.
+          last_config=$(git log -1 --format=%H -- \
+            automations templates.yaml input_numbers.yaml aarlo.yaml scripts scenes blueprints || true)
+          last_docs=$(git log -1 --format=%H -- docs AGENTS.md README.md || true)
+          if [ -z "$last_config" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Aucune automatisation dans l'historique." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -z "$last_docs" ] || [ "$last_config" != "$last_docs" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Configuration modifiee depuis la derniere mise a jour de la documentation." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Documentation a jour." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$last_docs" ]; then
+            echo "Dernier commit documentation : $(git log -1 --format='%h %s' "$last_docs")" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Installer opencode
+        if: steps.stale.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.opencode/bin
+          curl -fsSL https://opencode.ai/install | bash
+          ~/.opencode/bin/opencode --version
+
+      - name: Mettre a jour la documentation
+        if: steps.stale.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          ~/.opencode/bin/opencode run \
+            --agent factory-docs \
+            --model omniroute/agnes/agnes-2.5-flash \
+            "$(cat .github/prompts/docs.md)" 2>&1 | tee agent-output.log
+
+      - name: Ouvrir la pull request si necessaire
+        if: steps.stale.outputs.changed == 'true'
+        env:
+          BRANCH: factory/docs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const run = async (cmd, args) =>
+              await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
+
+            const status = await run('git', ['status', '--porcelain']);
+            core.info(status.output);
+            if (!status.output.trim()) {
+              core.info("Documentation deja a jour : aucune pull request.");
+              await core.summary.addRaw("Documentation deja a jour, rien a proposer.").write();
+              return;
+            }
+            // Perimetre documentaire strict, verifie cote workflow.
+            const ALLOWED = /^(docs\/|AGENTS\.md$|README\.md$|factory\/policy\.md$)/;
+            const touched = status.output.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
+            const refused = touched.filter(p => !ALLOWED.test(p));
+            if (refused.length) {
+              await core.setFailed('Fichiers hors perimetre documentaire : ' + refused.join(', '));
+              return;
+            }
+            core.info('Documentation modifiee : ' + touched.join(', '));
+
+            await run('git', ['add', '-A']);
+            await run('git', ['reset', '-q', 'agent-output.log']);
+            await run('git', ['commit', '-m', 'docs: mise a jour de la documentation']);
+            await run('git', ['branch', '-M', process.env.BRANCH]);
+            const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
+            core.info(push.output);
+            if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
+
+            const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);
+            const pull = await github.rest.pulls.create({
+              ...context.repo,
+              head: process.env.BRANCH,
+              base: context.payload.repository.default_branch,
+              title: 'Documentation : mise a jour hebdomadaire',
+              body: [
+                'Mise a jour automatique de la documentation, declenchee par un changement de configuration.',
+                '',
+                '- Produite par la factory. **Jamais fusionnee automatiquement.**',
+                '- Si le contenu ne vous convient pas, fermez la pull request.',
+                '',
+                '<details><summary>Rapport de l\'agent</summary>',
+                '', report, '', '</details>',
+              ].join('\n'),
+            });
+            core.info('Pull request : ' + pull.html_url);
+            await core.summary.addRaw('Pull request : ' + pull.html_url).write();

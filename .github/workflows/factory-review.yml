@@ -1,0 +1,116 @@
+# Revue automatique des pull requests, en lecture seule.
+#
+# Le relecteur n'a ni droits d'ecriture ni permission bash (voir
+# .opencode/agents/factory-review.md) : meme si le texte d'une pull request
+# contenait une instruction, il ne pourrait ni modifier un fichier ni executer
+# de commande. C'est pourquoi le correcteur, lui, passe par la CLI et non par
+# cette action (voir factory-fix.yml).
+#
+# L'action opencode poste la revue. Une etape suivante en lit le verdict et
+# ajoute l'etiquette `factory/needs-fix`, qui declenche factory-fix.yml.
+name: Factory Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+concurrency:
+  group: factory-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NEEDS_FIX_LABEL: factory/needs-fix
+  ESCALATE_LABEL: factory/escalade
+  MAX_ATTEMPTS: "2"
+
+jobs:
+  review:
+    name: Revue
+    # Le runner auto-heberge herite HASS_TOKEN, qui pilote la maison. On refuse
+    # donc tout code provenant d'un fork : les forks n'executent que le CI
+    # inerte (yamllint + check_config).
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, ha-factory]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Les variables OmniRoute ne sont pas exportees ici : elles sont deja
+      # dans l'environnement du runner, injectees par son
+      # /etc/ha-factory/runner.env via systemd EnvironmentFile.
+      - name: Charger le prompt de revue
+        id: prompt
+        run: |
+          set -euo pipefail
+          {
+            echo "Contexte de la pull request :"
+            echo "- Numero : ${PR_NUMBER}"
+            echo "- Titre : ${PR_TITLE}"
+            echo "- Branche : ${PR_HEAD}"
+            echo
+            cat .github/prompts/review.md
+          } > /tmp/prompt.txt
+          # GITHUB_OUTPUT est ligne par ligne : une valeur multiligne doit
+          # utiliser la forme here-document, sinon seul le premier ligne est lu.
+          {
+            echo 'value<<FACTORY_PROMPT_EOF'
+            cat /tmp/prompt.txt
+            echo 'FACTORY_PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+
+      - name: Revue par l'agent
+        uses: anomalyco/opencode/github@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: omniroute/agnes/agnes-2.5-flash
+          use_github_token: true
+          share: false
+          prompt: ${{ steps.prompt.outputs.value }}
+
+      - name: Appliquer le verdict
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = { owner: context.repo.owner, repo: context.repo.repo,
+                         issue_number: context.issue.number };
+            const comments = await github.paginate(github.rest.issues.listComments,
+                                                  { ...pr, per_page: 100 });
+            const last = comments[comments.length - 1];
+            if (!last) {
+              core.warning('Aucun commentaire de revue : aucune etiquette posee.');
+              return;
+            }
+            const body = last.body ?? '';
+            const blocking = body.includes('VERDICT: BLOQUANT');
+            const max = Number(process.env.MAX_ATTEMPTS);
+            const labels = (context.payload.pull_request?.labels ?? []).map(l => l.name);
+            const attempts = labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length;
+
+            if (!blocking) {
+              await github.rest.issues.removeLabel({ ...pr, name: process.env.NEEDS_FIX_LABEL })
+                .catch(() => {});
+              core.info('Verdict OK.');
+              return;
+            }
+            if (attempts >= max) {
+              await github.rest.issues.addLabels({ ...pr, labels: [process.env.ESCALATE_LABEL] });
+              core.warning(`${attempts} correction(s) deja faite(s) : escalade humaine.`);
+              return;
+            }
+            await github.rest.issues.addLabels({ ...pr, labels: [process.env.NEEDS_FIX_LABEL] });
+            core.info(`Etiquette ${process.env.NEEDS_FIX_LABEL} posee.`);

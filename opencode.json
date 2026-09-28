@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "share": "disabled",
+  "model": "omniroute/agnes/agnes-2.5-flash",
+  "small_model": "omniroute/agnes/agnes-2.5-flash",
+  "default_agent": "factory-review",
+  "provider": {
+    "omniroute": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OmniRoute",
+      "options": {
+        "baseURL": "{env:OMNIROUTER_BASE_URL}",
+        "apiKey": "{env:OMNIROUTER_API_KEY}"
+      },
+      "models": {
+        "agnes/agnes-2.5-flash": {
+          "name": "Agnes 2.5 Flash"
+        }
+      }
+    }
+  }
+}

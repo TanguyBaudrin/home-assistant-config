@@ -1,0 +1,130 @@
+# File de migration des automatisations.
+#
+# Les entrees correspondent, une par une, aux automatisations de
+# `automations/to_split.yaml`, heritees de l'interface Lovelace et non
+# encore migratees. Ce fichier est genere, pas edite a la main.
+#
+    # Pour verifier que la file est complete, le compte doit renvoyer 34 :
+    #
+    #     python3 -c "import yaml,sys; print(len(yaml.safe_load(open('automations/to_split.yaml'))))"
+    #
+# Le workflow nocturne factory-migrate.yml reclame UNE entree `pending` par
+# nuit, la migre, ouvre une pull request, et passe l'entree a `done` dans
+# cette pull request. Un humain fusionne : rien n'est fusionne
+# automatiquement.
+#
+# Regles de migration : .agents/skills/home-assistant-migration/SKILL.md
+# et AGENTS.md. Le procede doit rester iteratif et verifiable, jamais un
+# reformatage massif du fichier.
+#
+# `attempts` compte les tentatives. Au-dela de `max_attempts`, l'entree passe
+# a `blocked` et la factory s'arrete : une tache qui echoue trois fois est
+# probablement trop atypique pour un agent, et meritait une intervention
+# humaine.
+schema_version: 1
+source: automations/to_split.yaml
+total: 34
+max_attempts: 3
+queue:
+  - id: 'camera_disconnected'
+    status: pending
+    attempts: 0
+  - id: '1700041812633'
+    status: pending
+    attempts: 0
+  - id: '1700051716580'
+    status: pending
+    attempts: 0
+  - id: '1700307990206'
+    status: pending
+    attempts: 0
+  - id: '1700388839476'
+    status: pending
+    attempts: 0
+  - id: '1702810071752'
+    status: pending
+    attempts: 0
+  - id: '1735821043121'
+    status: pending
+    attempts: 0
+  - id: '1736019595242'
+    status: pending
+    attempts: 0
+  - id: '1736333581558'
+    status: pending
+    attempts: 0
+  - id: '1736799359847'
+    status: pending
+    attempts: 0
+  - id: '1736933681489'
+    status: pending
+    attempts: 0
+  - id: '1737633981398'
+    status: pending
+    attempts: 0
+  - id: '1737636598514'
+    status: pending
+    attempts: 0
+  - id: '1737726282862'
+    status: pending
+    attempts: 0
+  - id: '1739261458706'
+    status: pending
+    attempts: 0
+  - id: '1739543565644'
+    status: pending
+    attempts: 0
+  - id: '1739544177883'
+    status: pending
+    attempts: 0
+  - id: '1739546482324'
+    status: pending
+    attempts: 0
+  - id: '1743692081348'
+    status: pending
+    attempts: 0
+  - id: '1744619112416'
+    status: pending
+    attempts: 0
+  - id: '1751182910944'
+    status: pending
+    attempts: 0
+  - id: '1751186347505'
+    status: pending
+    attempts: 0
+  - id: '1753110473269'
+    status: pending
+    attempts: 0
+  - id: '1753453905895'
+    status: pending
+    attempts: 0
+  - id: '1754039557225'
+    status: pending
+    attempts: 0
+  - id: '1759576739845'
+    status: pending
+    attempts: 0
+  - id: '1764145635626'
+    status: pending
+    attempts: 0
+  - id: '1765203339880'
+    status: pending
+    attempts: 0
+  - id: '1765209144683'
+    status: pending
+    attempts: 0
+  - id: '1766061694326'
+    status: pending
+    attempts: 0
+  - id: '1766397966233'
+    status: pending
+    attempts: 0
+  - id: '1766398158749'
+    status: pending
+    attempts: 0
+  - id: '1766595380189'
+    status: pending
+    attempts: 0
+  - id: '1767091174755'
+    status: pending
+    attempts: 0

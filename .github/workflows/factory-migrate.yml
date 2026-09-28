@@ -1,0 +1,215 @@
+# Migration nocturne d'une automatisation heritee.
+#
+# Une seule automatisation par nuit : la migration doit rester verifiable et
+# revoisible par un humain, jamais un reformatage massif qu'on ne peut pas
+# relire.
+#
+# La file est factory/queue.yaml. Une entree est `pending`, `done` ou `blocked`.
+# L'avancement est ecrit DANS la pull request : tant que l'humain ne fusionne
+# pas, l'entree reste `pending` sur `main`. Pour ne pas rouvrir sans cesse la
+# meme migration, on ne selectionne jamais une entree qui a deja une pull
+# request ouverte.
+#
+# La logique de selection est dans .github/scripts/queue.cjs, testee par
+# .github/scripts/queue.test.cjs.
+name: Factory Migrate
+
+on:
+  schedule:
+    # 03:17 UTC. Pas 03:00 : evite le pic des actions programmees de GitHub.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      migration_id:
+        description: "Identifiant de l'automatisation a migrer (defaut : la premiere disponible)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: factory-migrate
+  cancel-in-progress: false
+
+env:
+  BRANCH_PREFIX: factory/migrate/
+  STALE_DAYS: "7"
+  MAX_ATTEMPTS: "3"
+
+jobs:
+  migrate:
+    name: Migration
+    # Une tache planifiee ne s'execute que sur le depot lui-meme : pas de code de
+    # fork ici, contrairement a factory-review.yml.
+    runs-on: [self-hosted, ha-factory]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reclamer une entree de la file
+        id: claim
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { parseQueue, selectEntry, claimedIds } = require('./.github/scripts/queue.cjs');
+
+            const queue = parseQueue(fs.readFileSync('factory/queue.yaml', 'utf8'));
+            const prefix = process.env.BRANCH_PREFIX;
+            const max = Number(process.env.MAX_ATTEMPTS);
+
+            // Pull requests ouvertes de la factory : elles couvrent ces entrees.
+            const open = await github.paginate(github.rest.pulls.list, {
+              ...context.repo, state: 'open', per_page: 100,
+            });
+            const claimed = claimedIds(open, prefix);
+            core.info(`File : ${queue.entries.length} entrees (total attendu ${queue.total}), `
+                      + `${claimed.length} deja en cours.`);
+
+            const pick = selectEntry(queue.entries, {
+              claimed, max, wanted: '${{ inputs.migration_id }}'.trim(),
+            });
+            if (pick.skipped) { core.info(`Rien a faire : ${pick.reason}`); core.setOutput('skip', 'true'); return; }
+
+            core.info(`Selectionne : ${pick.entry.id}`);
+            core.setOutput('skip', 'false');
+            core.setOutput('id', pick.entry.id);
+            core.setOutput('attempts', String(pick.entry.attempts));
+            core.setOutput('branch', `${prefix}${pick.entry.id}`);
+
+      - name: Verifier la selection
+        if: steps.claim.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          echo "id       = $MIGRATION_ID"
+          echo "attempts = $ATTEMPTS"
+          echo "branche  = $BRANCH"
+        env:
+          MIGRATION_ID: ${{ steps.claim.outputs.id }}
+          ATTEMPTS: ${{ steps.claim.outputs.attempts }}
+          BRANCH: ${{ steps.claim.outputs.branch }}
+
+      - name: Preparer le prompt
+        if: steps.claim.outputs.skip != 'true'
+        id: prompt
+        run: |
+          set -euo pipefail
+          # GITHUB_OUTPUT est ligne par ligne : une valeur multiligne doit
+          # utiliser la forme here-document.
+          {
+            echo 'body<<FACTORY_PROMPT_EOF'
+            echo "Identifiant a migrer : ${MIGRATION_ID}"
+            echo "Tentatives precedentes : ${ATTEMPTS}"
+            echo
+            sed "s/{{MIGRATION_ID}}/${MIGRATION_ID}/" .github/prompts/migrate.md
+            echo 'FACTORY_PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+        env:
+          MIGRATION_ID: ${{ steps.claim.outputs.id }}
+          ATTEMPTS: ${{ steps.claim.outputs.attempts }}
+
+      - name: Installer opencode
+        if: steps.claim.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.opencode/bin
+          curl -fsSL https://opencode.ai/install | bash
+          ~/.opencode/bin/opencode --version
+
+      # Les variables OmniRoute viennent de l'environnement du runner
+      # (/etc/ha-factory/runner.env), pas des secrets GitHub.
+      - name: Migrer avec l'agent
+        if: steps.claim.outputs.skip != 'true'
+        env:
+          PROMPT_BODY: ${{ steps.prompt.outputs.body }}
+        run: ~/.opencode/bin/opencode run --agent factory-migrate --model omniroute/agnes/agnes-2.5-flash "$PROMPT_BODY" 2>&1 | tee agent-output.log
+
+      - name: Valider et ouvrir la pull request
+        if: steps.claim.outputs.skip != 'true'
+        env:
+          MIGRATION_ID: ${{ steps.claim.outputs.id }}
+          BRANCH: ${{ steps.claim.outputs.branch }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const run = async (cmd, args) =>
+              await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
+
+            const status = await run('git', ['status', '--porcelain']);
+            core.info(status.output);
+            if (!status.output.trim()) {
+              await core.setFailed("Aucune modification : l'agent a signale une ambiguite "
+                + "ou n'a rien modifie. Voir agent-output.log.");
+              return;
+            }
+            const changed = status.output.split('\n').map(l => l.slice(3).trim())
+              .filter(Boolean);
+            core.info('Modifie : ' + changed.join(', '));
+
+            const lint = await run('yamllint', ['--strict', '.']);
+            core.info(lint.output);
+            if (lint.exit_code !== 0) {
+              await core.setFailed("yamllint --strict a echoue : rien n'est pousse.");
+              return;
+            }
+
+            await run('git', ['add', '-A']);
+            await run('git', ['reset', '-q', 'agent-output.log']);
+            await run('git', ['commit', '-m',
+              `refactor: migration de l'automatisation ${process.env.MIGRATION_ID}`]);
+            await run('git', ['branch', '-M', process.env.BRANCH]);
+            // --force : la branche appartient a la factory et n'est jamais
+            // editee a la main. Un re-execution remplace son contenu.
+            const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
+            core.info(push.output);
+            if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
+
+            const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);
+            const pull = await github.rest.pulls.create({
+              ...context.repo,
+              head: process.env.BRANCH,
+              base: context.payload.repository.default_branch,
+              title: `Migration : automatisation ${process.env.MIGRATION_ID}`,
+              body: [
+                'Migration automatique d\'une automatisation heritee.',
+                '',
+                `- Identifiant d'origine : \`${process.env.MIGRATION_ID}\``,
+                '- Produite par la factory. **Jamais fusionnee automatiquement.**',
+                '- Merger cette pull request valide l\'entree dans `factory/queue.yaml`.',
+                '- Ne pas editer cette branche a la main : la factory la remplace.',
+                '',
+                '<details><summary>Rapport de l\'agent</summary>',
+                '', report, '', '</details>',
+              ].join('\n'),
+            });
+            core.info('Pull request : ' + pull.html_url);
+
+      - name: Signaler les pull requests de migration en attente
+        if: always() && steps.claim.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prefix = process.env.BRANCH_PREFIX;
+            const days = Number(process.env.STALE_DAYS);
+            const open = await github.paginate(github.rest.pulls.list, {
+              ...context.repo, state: 'open', per_page: 100,
+            });
+            for (const p of open.filter(x => x.head.ref.startsWith(prefix))) {
+              const age = (Date.now() - new Date(p.updated_at).getTime()) / 864e5;
+              if (age <= days) continue;
+              if ((p.body ?? '').includes('<!-- factory-stale -->')) continue;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: p.number,
+                body: `Migration en attente de relecture humaine depuis ${Math.floor(age)} jours.\n\n`
+                      + "Cette automatisation ne sera pas re-proposee tant que cette pull request n'est pas traitee.\n\n"
+                      + '<!-- factory-stale -->',
+              });
+            }
