@@ -1,0 +1,20 @@
+# Hooks pre-commit locaux.
+#
+# Les regles yamllint (et les exclusions des blueprints tiers) sont definies
+# dans .yamllint, et non ici. La CI (.github/workflows/ci.yml) execute
+# exactement la meme commande, en mode strict.
+#
+#   pre-commit install
+#   pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: ["--strict"]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict

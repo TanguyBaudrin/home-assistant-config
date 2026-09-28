@@ -1,3 +1,8 @@
+# Dette connue : ce fichier melange deux styles d'indentation de sequences
+# (sequences indentees dans la premiere automatisation, non indentees ensuite).
+# A normaliser dans une migration dediee, sans modifier le comportement.
+# yamllint disable rule:indentation
+
 - id: 'auto_grenier_vmc_verification_consommation'
   alias: "Auto - Grenier - VMC - Vérification de la consommation après changement de vitesse"
   description: |

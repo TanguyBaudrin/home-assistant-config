@@ -1,4 +1,3 @@
-
 # Loads default set of integrations. Do not remove.
 default_config:
 
@@ -43,9 +42,9 @@ rflink:
       signal_repetitions: 10
     automatic_add: false
     devices:
-      newkaku_00000001_1: 
+      newkaku_00000001_1:
         name: prise_chacon_1
-      newkaku_00000002_1: 
+      newkaku_00000002_1:
         name: prise_chacon_2
         signal_repetitions: 1
   switch:
@@ -55,13 +54,13 @@ rflink:
     automatic_add: false
   cover:
     devices:
-      RTS_02FFFF_0: 
+      RTS_02FFFF_0:
         name: Cuisine
-      RTS_0F010F_0: 
+      RTS_0F010F_0:
         name: Salle à manger petit
-      RTS_0F010C_0: 
+      RTS_0F010C_0:
         name: Salle à manger grand
-      RTS_0F010B_0: 
+      RTS_0F010B_0:
         name: Salon
 
 zha:
@@ -76,7 +75,7 @@ zha:
       type: light
     e0:79:8d:ff:fe:b2:76:ba-1:
       type: switch
-      
+
 switch:
   - platform: circadian_lighting
     lights_brightness:
@@ -99,7 +98,7 @@ cover:
     name: "Cover sud"
     entities:
       - cover.salle_a_manger_petit
-    
+
 sensor:
   - platform: rest
     name: Sony Bravia TV Color mode
@@ -108,7 +107,7 @@ sensor:
       x-auth-psk: !secret bravia_psk
     method: POST
     payload: '{"method":"getPictureQualitySettings","params":[{"target":"pictureMode"}],"id":52,"version":"1.0"}'
-    value_template:  >
+    value_template: >
       {%- if value_json is defined -%}
         {{- value_json.result[0][0].currentValue -}}
       {%- else -%}
@@ -155,10 +154,10 @@ rest_command:
 
 shell_command:
   asustor_shutdown: >-
-    ssh -i /config/.ssh/id_rsa_asustor 
-    -o StrictHostKeyChecking=no 
-    -o ConnectTimeout=10 
-    root@10.0.5.3 
+    ssh -i /config/.ssh/id_rsa_asustor
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=10
+    root@10.0.5.3
     "poweroff"
 
 recorder:

@@ -1,3 +1,7 @@
+# Dette connue : ce fichier melange deux styles d'indentation de sequences.
+# A normaliser dans une migration dediee, sans modifier le comportement.
+# yamllint disable rule:indentation
+
 - alias: Canicule - notification free cooling efficace
   id: canicule_free_cooling
   description: Prévenir uniquement si l'extérieur est au moins 1,5°C plus frais
@@ -100,10 +104,10 @@
             above: 10
           - condition: template
             value_template: >
-              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 190 }} 
+              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 190 }}
           - condition: template
             value_template: >
-              {{ state_attr('cover.cover_est', 'current_position') | float(0) > 10}} 
+              {{ state_attr('cover.cover_est', 'current_position') | float(0) > 10}}
           - service: cover.close_cover
             target:
               entity_id:
@@ -120,10 +124,10 @@
             above: 10
           - condition: template
             value_template: >
-              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }} 
+              {{ 60 <= state_attr('sun.sun', 'azimuth') | float(0) <= 130 }}
           - condition: template
             value_template: >
-              {{ state_attr('cover.cover_est', 'current_position') | float(0) > 10}} 
+              {{ state_attr('cover.cover_est', 'current_position') | float(0) > 10}}
           - service: cover.set_cover_position
             target:
               entity_id: cover.cover_est
@@ -141,7 +145,7 @@
             above: 10
           - condition: template
             value_template: >
-              {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }} 
+              {{ 230 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_ouest', 'current_position') | float(0) > 10}}
@@ -151,7 +155,7 @@
                 - cover.salle_a_manger_grand
         alias: "Fermer les volets ouest"
 
-      
+
       - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule
@@ -162,7 +166,7 @@
             above: 10
           - condition: template
             value_template: >
-              {{ 160 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }} 
+              {{ 160 <= state_attr('sun.sun', 'azimuth') | float(0) <= 310 }}
           - condition: template
             value_template: >
               {{ state_attr('cover.cover_ouest', 'current_position') | float(0) > 10}}
@@ -172,7 +176,7 @@
             data:
               position: 10
         alias: "Fermer les velux ouest"
-        
+
       - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule
@@ -183,13 +187,13 @@
             above: 20
           - condition: template
             value_template: >
-              {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }} 
+              {{ 140 <= state_attr('sun.sun', 'azimuth') | float(0) <= 220 }}
           - service: cover.close_cover
             target:
               entity_id:
                 - cover.salle_a_manger_petit
         alias: "Fermer les volets sud"
-      
+
 
 - alias: Canicule - rouvrir volets après exposition
   id: canicule_open_cover
@@ -250,7 +254,7 @@
             data:
               position: 60
         alias: "Rouvrir les volets est"
-        
+
       - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule
@@ -282,7 +286,7 @@
             data:
               position: 60
         alias: "Rouvrir les volets ouest"
-      
+
       - sequence:
           - condition: state
             entity_id: binary_sensor.mode_canicule

@@ -1,4 +1,3 @@
-
 - id: 'tempo_state_changed'
   alias: '[Maison] Changement condition RTE tempo'
   description: ''

@@ -1,0 +1,54 @@
+---
+# yamllint configuration — see docs/reference/tooling.md
+# Every deviation from yamllint defaults is deliberate and justified here.
+
+extends: default
+
+rules:
+  # 1. Home Assistant YAML does not use document markers, and the existing
+  #    tree does not either. Adding 39 `---` lines would be pure churn.
+  document-start: disable
+
+  # 2. Default is 80 is untenable here: French prose in `description:` block
+  #    scalars and Jinja `{% set %}` lines in templates.yaml run 140-160 chars
+  #    and cannot be meaningfully wrapped (templates.yaml:104-139). 160 clears
+  #    those while still catching copy-paste mangling, which is the rule's job.
+  line-length:
+    max: 160
+
+  # 3. MANDATORY. Without this, `on:` in every GitHub Actions workflow is
+  #    parsed as boolean True and yamllint --strict fails the whole file.
+  truthy:
+    allowed-values: ['true', 'false', 'on']
+
+  # 4. Home Assistant's own UI emits non-indented sequences, and the majority
+  #    of this tree follows it (automations/global/tempo.yaml, grenier/vmc.yaml,
+  #    garage/*.yaml). A few hand-written files indent them
+  #    (automations/global/lights.yaml). `consistent` accepts both, per file.
+  indentation:
+    spaces: consistent
+    indent-sequences: consistent
+
+  # 5. Jinja templates inside descriptions legitimately start their own line
+  #    at a shallower indent; the sibling `indentation` rule is stricter and
+  #    covers the real risk.
+  comments-indentation: disable
+
+ignore: |
+  # Third-party blueprints vendored under their upstream author/organisation.
+  # Upstream-authored: reformatting them breaks future sync with upstream and
+  # defeats HA's `source_url` pinning. The only blueprint we own is
+  # blueprints/automation/lumiere-sur-mouvement.yaml, which stays linted.
+  blueprints/automation/Blackshome/
+  blueprints/automation/EPMatt/
+  blueprints/automation/Ltek/
+  blueprints/automation/andrew-codechimp/
+  blueprints/automation/hvorragend/
+  blueprints/automation/homeassistant/
+  blueprints/script/homeassistant/
+  blueprints/template/homeassistant/
+
+  # Legacy migration backlog, drained one automation per PR by
+  # .github/workflows/factory-migrate.yml via factory/queue.yaml.
+  # Remove this entry once the queue reaches status: done for every item.
+  automations/to_split.yaml

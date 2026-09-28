@@ -1,3 +1,8 @@
+# Dette connue : cette description tient sur une seule ligne de plus de
+# 160 caracteres. Le retour a la ligne ajouterait des sauts de ligne dans
+# le texte affiche par Home Assistant, donc la correction est differee.
+# yamllint disable rule:line-length
+
 - id: '1699817277063'
   alias: "Global - Lumières - Activation/désactivation centralisée des automatismes d'éclairage"
   description: |

@@ -7,9 +7,9 @@
   triggers:
   - trigger: state
     entity_id:
-      - binary_sensor.mode_jour
+    - binary_sensor.mode_jour
     to:
-      - 'on'
+    - 'on'
   actions:
   - action: input_boolean.turn_off
     target:

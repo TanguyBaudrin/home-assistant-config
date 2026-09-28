@@ -1,3 +1,8 @@
+# Dette connue : cette description tient sur une seule ligne de plus de
+# 160 caracteres. Le retour a la ligne ajouterait des sauts de ligne dans
+# le texte affiche par Home Assistant, donc la correction est differee.
+# yamllint disable rule:line-length
+
 - id: '1699818128381'
   alias: "Global - Routine - Activer « nuit » : lumières auto, volets, alarme"
   description: |
@@ -32,13 +37,13 @@
 - id: '1699870051044'
   alias: "Global - Chauffage - Automatisation du planning matinal selon calendrier du jour (Télétravail, Vacances, Quotidien)"
   description: |
-    Cette automatisation pilote chaque matin à 5h le choix du planning de chauffage Netatmo pour toute la maison en fonction des événements du calendrier : 
+    Cette automatisation pilote chaque matin à 5h le choix du planning de chauffage Netatmo pour toute la maison en fonction des événements du calendrier :
     - Si un événement "Télétravail" est en cours, applique le planning Télétravail aux pièces concernés.
     - Si un événement "Congés" est en cours, applique le planning Vacances.
     - Sinon, applique le planning Quotidien.
-    Zones : bureau, chambre Louis, chambre Maxime, chambre des parents, entrée, salle à manger. 
-    Déclencheur : 5h00. 
-    Actions : Sélection dynamique du planning de chauffage selon la présence des événements Télétravail ou Congés. 
+    Zones : bureau, chambre Louis, chambre Maxime, chambre des parents, entrée, salle à manger.
+    Déclencheur : 5h00.
+    Actions : Sélection dynamique du planning de chauffage selon la présence des événements Télétravail ou Congés.
     (Migré le 25/01/2026)
   trigger:
     - platform: time

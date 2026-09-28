@@ -458,7 +458,9 @@
     - name: "Mode jour"
       unique_id: mode_jour
       state: >-
-        {{- today_at(states('input_datetime.heure_de_reveil_de_la_maison')) <= now() and as_datetime([as_timestamp(as_datetime(state_attr("sun.sun", "next_dusk"))), as_timestamp(today_at("22:00"))] | min) >= utcnow() -}}
+        {{- today_at(states('input_datetime.heure_de_reveil_de_la_maison')) <= now() and
+        as_datetime([as_timestamp(as_datetime(state_attr("sun.sun", "next_dusk"))),
+        as_timestamp(today_at("22:00"))] | min) >= utcnow() -}}
 
 - sensor:
     - name: "Azimuth soleil"

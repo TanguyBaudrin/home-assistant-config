@@ -13,7 +13,9 @@
 
 blueprint:
   name: Lumière sur mouvement (générique)
-  description: Allume automatiquement une lumière ou un groupe de lumières lorsqu’un capteur de mouvement détecte une présence. Les lumières s’éteignent automatiquement après une durée d’inactivité.
+  description: >-
+    Allume automatiquement une lumière ou un groupe de lumières lorsqu’un capteur de mouvement détecte une présence.
+    Les lumières s’éteignent automatiquement après une durée d’inactivité.
   domain: automation
   input:
     motion_entity:

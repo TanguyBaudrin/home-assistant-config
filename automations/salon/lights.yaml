@@ -1,4 +1,3 @@
-
 - id: 'light_salon_auto'
   alias: '[Salon] Gestion de la lumière avec capteur de présence'
   description: ''
@@ -27,4 +26,3 @@
   - action: light.turn_off
     target:
       area_id: salle_a_manger
-  

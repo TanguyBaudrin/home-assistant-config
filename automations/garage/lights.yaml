@@ -1,6 +1,8 @@
 - id: '1699802530095'
   alias: Garage - Lumières - Allumage automatique sur détection de mouvement
-  description: Cette automatisation allume automatiquement les lampes du garage dès qu’un mouvement est détecté par le capteur spécifique et les éteint après trois minutes sans détection, pour plus de sécurité et d’économies d’énergie.
+  description: >-
+    Cette automatisation allume automatiquement les lampes du garage dès qu’un mouvement est détecté par le capteur
+    spécifique et les éteint après trois minutes sans détection, pour plus de sécurité et d’économies d’énergie.
   use_blueprint:
     path: homeassistant/motion_light.yaml
     input:

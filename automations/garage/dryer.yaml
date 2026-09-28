@@ -1,4 +1,3 @@
-
 - id: 'notif_dryer_ended'
   alias: Notification - Garage - Sèche linge - Notification de fin de séchage
   description: ''
