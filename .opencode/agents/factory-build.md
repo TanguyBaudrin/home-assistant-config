@@ -81,11 +81,24 @@ demande de les modifier, tu ne le fais pas et tu le signales dans ton rapport.
    erreur d'indentation est un run perdu.
 
    Itère tant que la sortie n'est pas vide : lance `yamllint --strict .`,
-   corrige les fichiers que **tu** as modifiés, relance. Les erreurs les plus
-   fréquentes ici sont des indentations incohérentes dans les séquences, et
-   la règle `indentation` de `.yamllint` est stricte. Ne corrige jamais un
-   fichier hors de ton périmètre pour faire passer le lint : laisse l'erreur
-   et signale-la dans ton rapport.
+   corrige les fichiers que **tu** as modifiés, relance. Pour cibler tes
+   propres fichiers, passe-les en arguments
+   (`yamllint --strict automations/global/x.yaml`) : la sortie est courte,
+   inutile de la trier. Les erreurs les plus fréquentes ici sont des
+   indentations incohérentes dans les séquences, et la règle `indentation` de
+   `.yamllint` est stricte. Ne corrige jamais un fichier hors de ton
+   périmètre pour faire passer le lint : laisse l'erreur et signale-la dans
+   ton rapport.
+
+   **Ne pipe pas une commande.** Seul le premier segment d'un pipeline est
+   autorisé, alors que `head`, `grep` ou `tail` sont refusés : l'appel est
+   rejeté dans son ensemble. Fais confiance à la sortie intégrale.
+
+   **Un appel refusé n'est pas un échec de validation.** Si l'outillage
+   répond `The user has specified a rule which prevents you from using this
+   specific tool call`, c'est une contrainte d'outillage : la commande n'a
+   pas tourné, elle n'a rien dit du code. Relance-la sous une forme
+   autorisée, et ne la compte pas comme une erreur de `yamllint`.
 
 7. Vérifie que `git status` ne montre que des fichiers autorisés, et que
    `git diff` ne contient aucun secret en clair.

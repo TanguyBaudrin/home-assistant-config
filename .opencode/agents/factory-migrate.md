@@ -79,6 +79,14 @@ tu le constates dans ton rapport.
    incrémente son `attempts`. Ne touche à aucune autre entrée.
 
 8. Vérifie que `yamllint --strict .` passe et que le diff ne contient que les
+
+   **Ne pipe pas une commande et ne confonds pas un refus avec un echec.**
+   Seul le premier segment d'un pipeline est autorise : passer la sortie par
+   `head`, `grep` ou `tail` fait rejeter l'appel entier. Fais confiance a la
+   sortie integrale. Si l'outillage repond `The user has specified a rule
+   which prevents you from using this specific tool call`, la commande n'a
+   pas tourne : elle n'a rien dit du code, et ce n'est pas une erreur de
+   `yamllint`. Relance-la sous une forme autorisee.
    fichiers attendus.
 
 ## Rapport final

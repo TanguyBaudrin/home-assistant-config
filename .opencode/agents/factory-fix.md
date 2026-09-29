@@ -52,6 +52,14 @@ retour**, sans le corriger. La revue decidera.
    la cause et re-execute ; ne contourne pas la regle avec un commentaire
    `yamllint disable` pour gagner du temps.
 
+   **Ne pipe pas une commande et ne confonds pas un refus avec un echec.**
+   Seul le premier segment d'un pipeline est autorise : passer la sortie par
+   `head`, `grep` ou `tail` fait rejeter l'appel entier. Fais confiance a la
+   sortie integrale. Si l'outillage repond `The user has specified a rule
+   which prevents you from using this specific tool call`, la commande n'a
+   pas tourne : elle n'a rien dit du code, et ce n'est pas une erreur de
+   `yamllint`. Relance-la sous une forme autorisee.
+
 ## Secrets et instance
 
 `HASS_TOKEN` et `HASS_SERVER` sont disponibles pour verifier l'existence d'une
