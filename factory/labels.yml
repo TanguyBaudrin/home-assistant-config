@@ -8,16 +8,26 @@
 # declenche. Les etiquettes doivent donc exister AVANT le premier passage
 # d'un agent.
 #
-# Convention : tout ce qui declenche un agent est un `factory/*`. Une
-# etiquette posee a la main declenche du travail, donc c'est un acte
-# humain delimite, pas un automatisme.
+# Convention : tout ce qui declenche un agent est un `factory/*`, sauf
+# `to-implement`. Une etiquette posee a la main declenche du travail, donc
+# c'est un acte humain delimite, pas un automatisme. `to-implement` echappe a
+# la convention parce que ce n'est pas un declencheur technique mais la
+# validation d'un plan : c'est la reponse a une question posee par l'agent
+# (« voici ce que je m'engage a faire, est-ce bien cela ? »), et elle doit se
+# lire sans connaitre l'usine. Le nom est donc en anglais, comme les champs
+# d'une pull request, pour ne pas ressembler a une commande interne.
 #
-# Appliquer `factory/build` a une issue autorise l'agent a l'executer :
-# n'utilisez cette etiquette que sur une issue que vous avez lue.
+# Le cycle d'une issue est donc : ouverte -> plan poste par factory-spec ->
+# `to-implement` pose -> pull request produite par factory-build. Un nouveau
+# commentaire sur l'issue relance le plan, jusqu'a validation.
 
-- name: factory/build
+- name: to-implement
   color: "0E8A16"
-  description: "Autorise l'agent a transformer cette issue en pull request"
+  description: "Plan valide : autorise l'agent a transformer cette issue en pull request"
+
+- name: factory/no-spec
+  color: "C2E0C6"
+  description: "Exclut l'issue de la phase de specification (correction evidente, migration, typo)"
 
 - name: factory/needs-fix
   color: "D93F0B"

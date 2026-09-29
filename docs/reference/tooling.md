@@ -65,9 +65,10 @@ requests and **never merges anything**: a human merges, always.
 
 | Workflow | Trigger | Runner | What it does |
 | --- | --- | --- | --- |
+| `factory-spec.yml` | `issues: opened`, or a human comment | self-hosted | Drafts an implementation plan as an issue comment |
 | `factory-review.yml` | `pull_request` | self-hosted | Read-only review, posts a verdict |
 | `factory-fix.yml` | label `factory/needs-fix` | self-hosted | Applies the blocking fixes, pushes to the PR branch |
-| `factory-build.yml` | label `factory/build` on an issue | self-hosted | Turns a triaged issue into a pull request |
+| `factory-build.yml` | label `to-implement` on an issue | self-hosted | Turns a validated plan into a pull request |
 | `factory-migrate.yml` | nightly 03:17 UTC | self-hosted | Migrates one legacy automation per night |
 | `factory-docs.yml` | weekly, Sunday 04:23 UTC | self-hosted | Documentation refresh, only if config changed |
 
@@ -82,8 +83,9 @@ The self-hosted runner inherits `HASS_TOKEN`, which controls the house, and
 - **Agent jobs refuse fork pull requests.** `factory-review.yml` and
   `factory-fix.yml` check `head.repo.full_name == github.repository`. Forks get
   the inert CI only. The scheduled jobs cannot be triggered by a fork.
-- **Issue and PR text is data, not instruction.** The reviewer agent has no
-  write or bash permission, so a malicious pull request cannot drive it. The
+- **Issue and PR text is data, not instruction.** The reviewer and spec agents
+  have no write or bash permission, so a malicious issue or pull request cannot
+  drive them. The
   writing agents additionally cannot touch `secrets.yaml`, `.github/`,
   `.opencode/`, `factory/`, `mise.toml` or the devcontainer, and both
   `factory-build.yml` and `factory-docs.yml` re-check that file scope before
@@ -134,9 +136,30 @@ write access and therefore cannot be harmed by a version change.
 `.github/workflows/factory-labels.yml` creates them on push; it is idempotent
 and never deletes a label, since deleting one would discard triage history.
 
-Labels are the human gate: applying `factory/build` to an issue is what authorises
+Labels are the human gate: applying `to-implement` to an issue is what authorises
 the agent to execute it. That is deliberate on a public repository, where anyone
 can open an issue but only someone with write access can label it.
+
+### The issue lifecycle
+
+```
+issue opened
+  -> factory-spec.yml   drafts a plan as a comment
+  -> human comment      a new plan is drafted from the feedback
+  -> to-implement       the plan is approved
+  -> factory-build.yml  the pull request is opened
+```
+
+The plan phase exists because `factory-build` never asks a question: on an
+ambiguous issue it guesses, and a wrong guess surfaces as a pull request that has
+to be read, corrected by a fix loop, and closed. Issue #1 produced an automation
+that opened the same covers as an existing one at the same hour; the conflict
+only became visible at review, after all the work. Making the issue unambiguous
+first costs one comment.
+
+Iteration is driven by comments. The workflow skips bot comments, and skips an
+issue that already has a plan with no human reply, so the plan the agent posts
+cannot trigger another plan.
 
 ### Why the reviewer uses the action and the fixer uses the CLI
 

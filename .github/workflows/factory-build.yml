@@ -1,6 +1,8 @@
 # Transformation d'une issue en pull request.
 #
-# Declenche par l'etiquette `factory/build`.
+# Declenche par l'etiquette `to-implement`, c'est-a-dire apres validation du
+# plan redige par factory-spec.yml. C'est le deuxieme verrou humain du cycle :
+# le premier est la relecture du plan, celui-ci l'autorisation d'ecrire.
 #
 # Controle de securite principal : sur un depot public, n'importe qui peut
 # ouvrir une issue, et ce job s'execute sur un runner auto-heberge qui herite
@@ -33,7 +35,7 @@ env:
   # CLI epinglee : sans --version le script d\'installation telecharge la
   # derniere version, qui peut casser la frontmatter d\'un agent.
   OPENCODE_VERSION: "1.18.33"
-  TRIGGER_LABEL: factory/build
+  TRIGGER_LABEL: to-implement
   BRANCH_PREFIX: factory/build/
 
 jobs:
@@ -41,7 +43,7 @@ jobs:
     name: Construction
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.label.name == 'factory/build'
+      github.event.label.name == 'to-implement'
     runs-on: [self-hosted, ha-factory]
     timeout-minutes: 45
     steps:

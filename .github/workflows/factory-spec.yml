@@ -1,0 +1,273 @@
+# Premiere passe d'une issue : redaction du plan d'implementation.
+#
+# Ce workflow ne modifie rien et ne pousse rien. Il rend un plan en commentaire,
+# et attend un humain. Le cycle est :
+#
+#   issue ouverte
+#     -> factory-spec poste un plan          (ce workflow)
+#     -> un commentaire de l'utilisateur      (relance ce workflow)
+#     -> ... jusqu'a validation
+#     -> etiquette `to-implement`
+#     -> factory-build produit la pull request
+#
+# Pourquoi une phase de plan : l'agent de construction ne pose aucune question.
+# Sur une issue ambigue il devine, et une devinassemblee finit en pull request
+# illisible, corrigee, puis fermee. Sur l'issue #1, l'agent a invente une
+# automatisation qui ouvrait les memes volets qu'une autre a la meme heure : le
+# conflit n'a emerge qu'a la revue, apres tout le travail. Rendre l'issue non
+# ambigue avant d'ecrire coute un commentaire et evite une boucle.
+#
+# Ce workflow tourne sur le runner auto-heberge, qui herite HASS_TOKEN. Il ne
+# traite donc que des issues de ce depot, et son agent est en lecture seule
+# (`edit: deny`, `bash: deny`) : le texte de l'issue ne peut pas se transformer
+# ni en ecriture, ni en commande.
+name: Factory Spec
+
+on:
+  # Issue ouverte : premier plan.
+  issues:
+    types: [opened]
+  # Commentaire : l'utilisateur n'est pas d'accord, ou precise. Relance un plan.
+  issue_comment:
+    types: [created]
+  # Relance a la main, utile quand un plan a echoue cote runner.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Numero de l'issue a planifier"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  # Une seule passe a la fois par issue : deux plans croises seraient
+  # illisibles, et le second suppressorait le retour du premier.
+  group: factory-spec-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+env:
+  # CLI epinglee : sans --version le script d'installation telecharge la
+  # derniere version, qui peut casser la frontmatter d'un agent.
+  OPENCODE_VERSION: "1.18.33"
+  APPROVE_LABEL: to-implement
+  NO_SPEC_LABEL: factory/no-spec
+  # Marqueur invisible dans le corps du commentaire. Il permet de reconnaitre
+  # nos propres commentaires, donc de ne pas boucler sur ce que l'agent vient
+  # d'ecrire, et de retrouver le plan de reference au passage suivant.
+  PLAN_MARKER: "<!-- factory-spec -->"
+
+jobs:
+  spec:
+    name: Plan
+    # Sur `issue_comment`, on ignore les commentaires de bots. C'est la
+    # protection anti-boucle : le workflow poste le plan sur l'issue, ce qui
+    # declenche un `issue_comment`, qui relancerait un plan, indefiniment. Le
+    # test est dans le `if` et pas plus bas, pour ne pas monopoliser le runner.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.comment.user.type != 'Bot' &&
+       github.event.issue.pull_request == null)
+    runs-on: [self-hosted, ha-factory]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resoudre l'issue et rendre le prompt
+        id: issue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const skip = (why) => { core.info('Ignore : ' + why); core.setOutput('skip', 'true'); };
+            const number = Number(context.payload.issue?.number
+              || context.payload.inputs?.issue_number);
+            if (!Number.isFinite(number) || number < 1) {
+              await core.setFailed('Numero d\'issue invalide.');
+              return;
+            }
+            const issue = (await github.rest.issues.get({
+              ...context.repo, issue_number: number,
+            })).data;
+            if (issue.state !== 'open') { skip('issue fermee.'); return; }
+            if ((issue.pull_request ?? null) !== null) {
+              skip('ce numero designe une pull request, pas une issue.');
+              return;
+            }
+
+            const labels = (issue.labels ?? []).map(l => l.name);
+            if (labels.includes(process.env.APPROVE_LABEL)) {
+              skip('plan deja valide (`' + process.env.APPROVE_LABEL + '` pose).');
+              return;
+            }
+            if (labels.includes(process.env.NO_SPEC_LABEL)) {
+              skip('exclue par `' + process.env.NO_SPEC_LABEL + '`.');
+              return;
+            }
+
+            // Une pull request ouverte sur cette issue signifie qu'elle a deja
+            // ete traitee : un plan arriving apres coup ne sert a rien et
+            // confondrait la lecture de l'issue.
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
+            const open = await fetchAll(github.rest.pulls.list,
+                                        { ...context.repo, state: 'open' });
+            if (open.some(p => (p.body ?? '').includes(`<!-- issue ${number} -->`))) {
+              skip('une pull request ouverte traite deja cette issue.');
+              return;
+            }
+
+            // Reconstruction de la discussion : le dernier plan, puis les
+            // commentaires humains posteres depuis. Sans cela, une relance ne
+            // saurait pas ce qui etait reproche au plan precedent, et
+            // repasserait le meme plan.
+            const comments = await fetchAll(github.rest.issues.listComments,
+                                           { ...context.repo, issue_number: number });
+            const lastPlan = comments.filter(c => (c.body ?? '').includes(process.env.PLAN_MARKER)).pop();
+            const after = lastPlan
+              ? comments.slice(comments.indexOf(lastPlan) + 1)
+              : comments;
+            const feedback = after.filter(c => c.user?.type !== 'Bot');
+            if (lastPlan && feedback.length === 0) {
+              skip('aucun retour humain depuis le dernier plan.');
+              return;
+            }
+
+            const parts = [];
+            if (lastPlan) {
+              parts.push('### Plan precedent, a corriger\n',
+                         lastPlan.body.replace(process.env.PLAN_MARKER, '').trim());
+            }
+            if (feedback.length) {
+              parts.push('### Retours de la personne',
+                         ...feedback.map(c => `- **${c.user?.login}** :\n${(c.body ?? '').trim()}`));
+            }
+            if (!parts.length) {
+              parts.push('Premier passage. Aucun plan precedent, aucun retour.');
+            }
+
+            // Substitution en UNE passe, par fonction. Deux pieges, tous deux
+            // deja payes ailleurs dans cette usine :
+            //
+            // - `String.replace` interprete $&, $` et $' dans une chaine de
+            //   remplacement. Un corps d'issue en contient reguierement, et le
+            //   prompt rendu ne correspondrait plus a l'issue.
+            // - Un balayage repete rescanne sa propre sortie : un corps
+            //   d'issue citant `{{ISSUE_BODY}}` serait resolu a son tour, au
+            //   lieu d'etre traite comme du texte.
+            //
+            // D'ou le remplacement par fonction sur une expression
+            // reguliere : chaque placeholder est consomme, et son contenu
+            // n'est jamais reexamine.
+            const template = require('fs').readFileSync('.github/prompts/spec.md', 'utf8');
+            const vars = {
+              '{{ISSUE_NUMBER}}': String(number),
+              '{{ISSUE_TITLE}}': issue.title || 'sans titre',
+              '{{ISSUE_BODY}}': (issue.body ?? '').trim() || '(corps vide)',
+              '{{DISCUSSION}}': parts.join('\n\n'),
+            };
+            const unknown = new Set();
+            const body = template.replace(/\{\{[A-Z_][A-Z0-9_]*\}\}/g, (token) => {
+              if (!(token in vars)) { unknown.add(token); return token; }
+              return vars[token];
+            });
+            // Un placeholder du template sans valeur est un bug du template,
+            // pas une issue mal ecrite : l'agent recevrait le litteral et
+            // chercherait a l'implementer comme s'il s'agissait d'une entite.
+            if (unknown.size) {
+              await core.setFailed('Placeholder absent du prompt : '
+                + [...unknown].join(', '));
+              return;
+            }
+            core.setOutput('skip', 'false');
+            core.setOutput('number', String(number));
+            core.setOutput('prompt', body);
+            core.info('Issue ' + number + ' : plan a redaction.');
+
+      - name: Installer opencode
+        if: steps.issue.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.opencode/bin
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
+          ~/.opencode/bin/opencode --version
+
+      - name: Verifier la configuration OmniRoute
+        if: steps.issue.outputs.skip != 'true'
+        # opencode.json resout {env:OMNIROUTER_BASE_URL} : sans la variable,
+        # baseURL vaut chaine vide et l'agent echoue sur une erreur
+        # incomprehensible, `/chat/completions cannot be parsed as a URL`.
+        run: |
+          set -euo pipefail
+          missing=()
+          for var in OMNIROUTER_BASE_URL OMNIROUTER_API_KEY; do
+            if [ -z "${!var:-}" ]; then missing+=("$var"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Variable(s) absente(s) sur le runner : ${missing[*]}"
+            echo "::error::Elles doivent venir de /etc/ha-factory/runner.env, puis le service runner doit etre recharge."
+            exit 1
+          fi
+          echo "OmniRoute configuree sur ${OMNIROUTER_BASE_URL}"
+
+      # Les variables OmniRoute viennent de l'environnement du runner
+      # (/etc/ha-factory/runner.env), pas des secrets GitHub.
+      - name: Rediger le plan
+        if: steps.issue.outputs.skip != 'true'
+        env:
+          PROMPT_BODY: ${{ steps.issue.outputs.prompt }}
+        run: |
+          set -euo pipefail
+          # pipefail est indispensable : sans lui, `| tee` renvoie le statut de
+          # tee et l'etape passe au vert meme si l'agent a echoue.
+          ~/.opencode/bin/opencode run \
+            --agent factory-spec \
+            --model omnirouter/agnes/agnes-2.5-flash \
+            "$PROMPT_BODY" 2>&1 | tee agent-output.log
+
+      - name: Publier le plan
+        if: steps.issue.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = { ...context.repo, issue_number: Number(process.env.ISSUE_NUMBER) };
+            const output = require('fs').readFileSync('agent-output.log', 'utf8');
+            // Le plan est le texte libre de l'agent. On ne prend que la fin :
+            // l'agent bavearde avant, et un plan noyé dans le journal de run
+            // n'est plus lisible ni relisible.
+            const plan = output.slice(-6000).trim();
+            if (!plan) {
+              await core.setFailed('L\'agent n\'a produit aucun plan.');
+              return;
+            }
+            if (!plan.startsWith('## Plan')) {
+              // Un plan qui ne commence pas la ou le modele l'exige est un
+              // plan dont la structure n'est pas celle attendue : le dire
+              // vaut mieux que poster un roman.
+              core.warning('Le plan ne commence pas par `## Plan`. Publie tel quel.');
+            }
+            await github.rest.issues.createComment({
+              ...pr,
+              body: [
+                process.env.PLAN_MARKER,
+                plan,
+                '',
+                '---',
+                '',
+                '**Ce plan vous convient ?**',
+                '',
+                `- Appliquez l'etiquette \`${process.env.APPROVE_LABEL}\` pour lancer l'implementation.`,
+                '- Sinon, repondez dans un commentaire : un nouveau plan sera redige a partir de vos remarques.',
+                `- \`${process.env.NO_SPEC_LABEL}\` dispense l'issue de cette phase.`,
+              ].join('\n'),
+            });
+            core.info('Plan publie sur l\'issue ' + process.env.ISSUE_NUMBER + '.');
