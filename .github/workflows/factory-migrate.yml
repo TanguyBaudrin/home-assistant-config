@@ -69,9 +69,9 @@ jobs:
             const max = Number(process.env.MAX_ATTEMPTS);
 
             // Pull requests ouvertes de la factory : elles couvrent ces entrees.
-            const open = await github.paginate(github.rest.pulls.list, {
-              ...context.repo, state: 'open', per_page: 100,
-            });
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
+            const open = await fetchAll(github.rest.pulls.list,
+                                        { ...context.repo, state: 'open' });
             const claimed = claimedIds(open, prefix);
             core.info(`File : ${queue.entries.length} entrees (total attendu ${queue.total}), `
                       + `${claimed.length} deja en cours.`);
@@ -205,9 +205,9 @@ jobs:
           script: |
             const prefix = process.env.BRANCH_PREFIX;
             const days = Number(process.env.STALE_DAYS);
-            const open = await github.paginate(github.rest.pulls.list, {
-              ...context.repo, state: 'open', per_page: 100,
-            });
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
+            const open = await fetchAll(github.rest.pulls.list,
+                                        { ...context.repo, state: 'open' });
             for (const p of open.filter(x => x.head.ref.startsWith(prefix))) {
               const age = (Date.now() - new Date(p.updated_at).getTime()) / 864e5;
               if (age <= days) continue;

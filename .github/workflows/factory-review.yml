@@ -101,8 +101,8 @@ jobs:
           script: |
             const pr = { owner: context.repo.owner, repo: context.repo.repo,
                          issue_number: context.issue.number };
-            const comments = await github.paginate(github.rest.issues.listComments,
-                                                  { ...pr, per_page: 100 });
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
+            const comments = await fetchAll(github.rest.issues.listComments, pr);
             const last = comments[comments.length - 1];
             if (!last) {
               core.warning('Aucun commentaire de revue : aucune etiquette posee.');

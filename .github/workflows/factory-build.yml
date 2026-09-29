@@ -73,9 +73,9 @@ jobs:
               return;
             }
             // Garde-fou : une issue deja traitee ne doit pas etre rejouee.
-            const open = await github.paginate(github.rest.pulls.list, {
-              ...context.repo, state: 'open', per_page: 100,
-            });
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
+            const open = await fetchAll(github.rest.pulls.list,
+                                        { ...context.repo, state: 'open' });
             const ref = `issue-${number}`;
             if (open.some(p => p.head.ref.endsWith(ref) || (p.body ?? '').includes(`<!-- issue ${number} -->`))) {
               core.info('Une pull request ouverte traite deja cette issue.');

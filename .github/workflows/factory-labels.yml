@@ -38,6 +38,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
             const raw = fs.readFileSync('factory/labels.yml', 'utf8');
             // Format volontairement simple pour ne pas dependre d'un parseur
             // YAML dans le contexte de l'action.
@@ -55,10 +56,14 @@ jobs:
             }
             if (!wanted.length) { core.setFailed('Aucune etiquette trouvee.'); return; }
 
-            const existing = new Map();
-            for await (const p of github.paginate.iterator(
-              github.rest.issues.listLabelsForRepo, { ...context.repo, per_page: 100 })) {
-              existing.set(p.name, p);
+            const labels = await fetchAll(
+              github.rest.issues.listLabelsForRepo, context.repo);
+            const existing = new Map(labels.map(l => [l.name, l]));
+            // Garde-fou : sans lui, un depot sans aucune etiquette est
+            //(indistinguable d'une pagination cassee, et l'on recree des
+            // etiquettes deja presentes en renvoyant 422 sans explication.
+            if (labels.length === 0) {
+              core.warning('Aucune etiquette lue sur le depot : verification des droits.');
             }
 
             let created = 0, updated = 0;
