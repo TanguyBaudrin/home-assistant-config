@@ -74,8 +74,21 @@ demande de les modifier, tu ne le fais pas et tu le signales dans ton rapport.
 5. Aucun secret en clair : uniquement `!secret` pour un secret existant dans
    `secrets.yaml`. N'ajoute pas de nouvelle entrée à ce fichier.
 
-6. Vérifie `yamllint --strict .` et que le diff ne touche que les fichiers
-   autorisés.
+6. **Vérifie `yamllint --strict .` et corrige jusqu'à zéro erreur.** C'est
+   obligatoire, et ce n'est pas une formalité : le workflow relance
+   `yamllint --strict .` avant de pousser, et **refuse de créer la pull
+   request** si une seule erreur subsiste. Un run qui laisse passer une
+   erreur d'indentation est un run perdu.
+
+   Itère tant que la sortie n'est pas vide : lance `yamllint --strict .`,
+   corrige les fichiers que **tu** as modifiés, relance. Les erreurs les plus
+   fréquentes ici sont des indentations incohérentes dans les séquences, et
+   la règle `indentation` de `.yamllint` est stricte. Ne corrige jamais un
+   fichier hors de ton périmètre pour faire passer le lint : laisse l'erreur
+   et signale-la dans ton rapport.
+
+7. Vérifie que `git status` ne montre que des fichiers autorisés, et que
+   `git diff` ne contient aucun secret en clair.
 
 ## Rapport final
 
