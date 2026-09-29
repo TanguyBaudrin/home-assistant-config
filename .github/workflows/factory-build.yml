@@ -217,7 +217,15 @@ jobs:
 
             const status = await run('git', ['status', '--porcelain']);
             core.info(status.stdout);
-            if (!status.stdout.trim()) {
+
+            // Le journal de l'agent est ecrit dans l arbre de travail par le
+            // `| tee`, et il est retire du commit plus bas. Il ne doit donc pas
+            // compter comme une modification, sinon tout run qui reussit est
+            // rejete comme hors perimetre.
+            const HARNESS = ['agent-output.log'];
+            const touched = status.stdout.split('\n').map(l => l.slice(3).trim())
+              .filter(p => p && !HARNESS.includes(p));
+            if (!touched.length) {
               await core.setFailed("Aucune modification : voir agent-output.log.");
               return;
             }
@@ -226,7 +234,6 @@ jobs:
             // aussi : une pull request ne doit pas pouvoir toucher la CI.
             const ALLOWED = /^(automations|scripts|scenes|blueprints)\//;
             const ALLOWED_FILES = new Set(['templates.yaml', 'input_numbers.yaml', 'aarlo.yaml']);
-            const touched = status.stdout.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
             const refused = touched.filter(p => !ALLOWED.test(p) && !ALLOWED_FILES.has(p));
             if (refused.length) {
               await core.setFailed('Fichiers hors perimetre : ' + refused.join(', '));

@@ -81,6 +81,31 @@ def check_exec_api(workflow: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_commit_order(workflow: pathlib.Path) -> list[str]:
+    """`git reset agent-output.log` doit precéder `git commit`.
+
+    Le journal de l agent est cree dans l arbre de travail par le `| tee`. Il
+    est retire du commit pour ne jamais partir dans une pull request, mais
+    seulement si le reset precede le commit : apres, c trop tard, le fichier
+    est deja dans le commit.(factory-fix ne l'excluait pas du tout.)
+    """
+    failures = []
+    for kind, _job, label, script in inline_scripts(workflow):
+        if kind != "js" or "agent-output.log" not in script:
+            continue
+        commit = script.find("'commit'")
+        reset = script.find("'reset'")
+        if commit == -1:
+            continue
+        if reset == -1 or reset > commit:
+            failures.append(f"{workflow.name} / {label}")
+            print(
+                f"  FAIL commit {workflow.name} / {label} : "
+                "agent-output.log n est retire qu'apres le commit"
+            )
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -90,12 +115,17 @@ def main(argv: list[str]) -> int:
 
     shell = [f for w in workflows for f in check_shell(w)]
     api = [f for w in workflows for f in check_exec_api(w)]
+    order = [f for w in workflows for f in check_commit_order(w)]
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api:
-        print(f"\n{len(shell)} bloc(s) shell invalide(s), {len(api)} appel(s) exec invalide(s)")
+    if shell or api or order:
+        print(
+            f"\n{len(shell)} bloc(s) shell invalide(s), "
+            f"{len(api)} appel(s) exec invalide(s), "
+            f"{len(order)} ordre(s) de commit invalide(s)"
+        )
         return 1
-    print(f"  ok   {total} blocs inlines : shell et API exec valides")
+    print(f"  ok   {total} blocs inlines : shell, API exec et commits valides")
     return 0
 
 

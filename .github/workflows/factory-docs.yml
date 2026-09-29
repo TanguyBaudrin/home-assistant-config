@@ -89,14 +89,20 @@ jobs:
 
             const status = await run('git', ['status', '--porcelain']);
             core.info(status.stdout);
-            if (!status.stdout.trim()) {
+
+            // Le journal de l'agent est ecrit dans l arbre de travail par le
+            // `| tee` et retire du commit plus bas : sans ce filtre, tout run
+            // reussi echoue sur son propre journal.
+            const HARNESS = ['agent-output.log'];
+            const touched = status.stdout.split('\n').map(l => l.slice(3).trim())
+              .filter(p => p && !HARNESS.includes(p));
+            if (!touched.length) {
               core.info("Documentation deja a jour : aucune pull request.");
               await core.summary.addRaw("Documentation deja a jour, rien a proposer.").write();
               return;
             }
             // Perimetre documentaire strict, verifie cote workflow.
             const ALLOWED = /^(docs\/|AGENTS\.md$|README\.md$|factory\/policy\.md$)/;
-            const touched = status.stdout.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
             const refused = touched.filter(p => !ALLOWED.test(p));
             if (refused.length) {
               await core.setFailed('Fichiers hors perimetre documentaire : ' + refused.join(', '));

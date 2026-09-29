@@ -120,14 +120,26 @@ jobs:
 
             const status = await run('git', ['status', '--porcelain']);
             core.info(status.stdout);
-            if (!status.stdout.trim()) {
+
+            // Le journal de l'agent est ecrit dans l arbre de travail par le
+            // `| tee` et retire du commit plus bas : sans ce filtre, un agent
+            // qui ne corrige rien ne serait jamais detecte, puisque le journal
+            // seul ferait passer la verification.
+            const HARNESS = ['agent-output.log'];
+            const changed = status.stdout.split('\n').map(l => l.slice(3).trim())
+              .filter(p => p && !HARNESS.includes(p));
+            if (!changed.length) {
               core.warning('Aucune modification : point non corrigeable, escalade.');
               await github.rest.issues.addLabels({ ...context.issue,
                 labels: [`factory/attempt-${attempts}`, 'factory/escalade'] });
               return;
             }
+            core.info('Modifie : ' + changed.join(', '));
 
             await run('git', ['add', '-A']);
+            // Avant le commit : apres, il serait deja trop tard, le journal
+            // partirait dans la pull request.
+            await run('git', ['reset', '-q', 'agent-output.log']);
             await run('git', ['commit', '-m',
               `fix: corrections de la revue automatique (essai ${attempts})`]);
             const push = await run('git', ['push', 'origin',

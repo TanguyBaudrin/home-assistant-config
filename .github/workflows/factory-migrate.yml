@@ -156,13 +156,18 @@ jobs:
 
             const status = await run('git', ['status', '--porcelain']);
             core.info(status.stdout);
-            if (!status.stdout.trim()) {
+
+            // Le journal de l'agent est ecrit dans l arbre de travail par le
+            // `| tee` et retire du commit plus bas : il ne compte pas comme
+            // une modification.
+            const HARNESS = ['agent-output.log'];
+            const changed = status.stdout.split('\n').map(l => l.slice(3).trim())
+              .filter(p => p && !HARNESS.includes(p));
+            if (!changed.length) {
               await core.setFailed("Aucune modification : l'agent a signale une ambiguite "
                 + "ou n'a rien modifie. Voir agent-output.log.");
               return;
             }
-            const changed = status.stdout.split('\n').map(l => l.slice(3).trim())
-              .filter(Boolean);
             core.info('Modifie : ' + changed.join(', '));
 
             const lint = await run('yamllint', ['--strict', '.']);
