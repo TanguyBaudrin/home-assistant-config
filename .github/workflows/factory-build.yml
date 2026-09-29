@@ -167,13 +167,40 @@ jobs:
           curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
           ~/.opencode/bin/opencode --version
 
+      - name: Verifier la configuration OmniRoute
+        if: steps.issue.outputs.skip != 'true'
+        # opencode.json resolait {env:OMNIROUTER_BASE_URL} : si la variable
+        # manque, baseURL vaut chaine vide et l agent echoue sur une erreur
+        # incomprehensible, `/chat/completions cannot be parsed as a URL`.
+        # On verifie ici pour nommer la variable a l origem du probleme.
+        run: |
+          set -euo pipefail
+          missing=()
+          for var in OMNIROUTER_BASE_URL OMNIROUTER_API_KEY; do
+            if [ -z "${!var:-}" ]; then missing+=("$var"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Variable(s) absente(s) sur le runner : ${missing[*]}"
+            echo "::error::Elles doivent venir de /etc/ha-factory/runner.env, puis le service runner doit etre recharge."
+            exit 1
+          fi
+          echo "OmniRoute configuree sur ${OMNIROUTER_BASE_URL}"
+
       # Les variables OmniRoute viennent de l'environnement du runner
       # (/etc/ha-factory/runner.env), pas des secrets GitHub.
       - name: Construire avec l'agent
         if: steps.issue.outputs.skip != 'true'
         env:
           PROMPT_BODY: ${{ steps.prompt.outputs.body }}
-        run: ~/.opencode/bin/opencode run --agent factory-build --model omniroute/agnes/agnes-2.5-flash "$PROMPT_BODY" 2>&1 | tee agent-output.log
+        run: |
+          set -euo pipefail
+          # pipefail est indispensable : sans lui, `| tee` renvoie le statut de
+          # tee et l etape passe au vert meme si l agent a echoue. C est ce qui
+          # a masque un echec total de l agent lors du premier vrai build.
+          ~/.opencode/bin/opencode run \
+            --agent factory-build \
+            --model omniroute/agnes/agnes-2.5-flash \
+            "$PROMPT_BODY" 2>&1 | tee agent-output.log
 
       - name: Valider et ouvrir la pull request
         if: steps.issue.outputs.skip != 'true'
@@ -189,8 +216,8 @@ jobs:
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
 
             const status = await run('git', ['status', '--porcelain']);
-            core.info(status.output);
-            if (!status.output.trim()) {
+            core.info(status.stdout);
+            if (!status.stdout.trim()) {
               await core.setFailed("Aucune modification : voir agent-output.log.");
               return;
             }
@@ -199,7 +226,7 @@ jobs:
             // aussi : une pull request ne doit pas pouvoir toucher la CI.
             const ALLOWED = /^(automations|scripts|scenes|blueprints)\//;
             const ALLOWED_FILES = new Set(['templates.yaml', 'input_numbers.yaml', 'aarlo.yaml']);
-            const touched = status.output.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
+            const touched = status.stdout.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
             const refused = touched.filter(p => !ALLOWED.test(p) && !ALLOWED_FILES.has(p));
             if (refused.length) {
               await core.setFailed('Fichiers hors perimetre : ' + refused.join(', '));
@@ -208,7 +235,7 @@ jobs:
             core.info('Perimetre respecte : ' + touched.join(', '));
 
             const lint = await run('yamllint', ['--strict', '.']);
-            core.info(lint.output);
+            core.info(lint.stdout);
             if (lint.exit_code !== 0) {
               await core.setFailed("yamllint --strict a echoue : rien n'est pousse.");
               return;
@@ -220,7 +247,7 @@ jobs:
               `feat: ${process.env.ISSUE_TITLE} (#${process.env.ISSUE_NUMBER})`]);
             await run('git', ['branch', '-M', process.env.BRANCH]);
             const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
-            core.info(push.output);
+            core.info(push.stdout);
             if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
 
             const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);

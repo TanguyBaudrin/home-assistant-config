@@ -129,10 +129,18 @@ jobs:
       # Les variables OmniRoute viennent de l'environnement du runner
       # (/etc/ha-factory/runner.env), pas des secrets GitHub.
       - name: Migrer avec l'agent
-        if: steps.claim.outputs.skip != 'true'
+        if: steps.pick.outputs.skip != 'true'
         env:
           PROMPT_BODY: ${{ steps.prompt.outputs.body }}
-        run: ~/.opencode/bin/opencode run --agent factory-migrate --model omniroute/agnes/agnes-2.5-flash "$PROMPT_BODY" 2>&1 | tee agent-output.log
+        run: |
+          set -euo pipefail
+          # pipefail est indispensable : sans lui, `| tee` renvoie le statut de
+          # tee et l etape passe au vert meme si l agent a echoue.
+          ~/.opencode/bin/opencode run \
+            --agent factory-migrate \
+            --model omniroute/agnes/agnes-2.5-flash \
+            "$PROMPT_BODY" 2>&1 | tee agent-output.log
+
 
       - name: Valider et ouvrir la pull request
         if: steps.claim.outputs.skip != 'true'
@@ -147,18 +155,18 @@ jobs:
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
 
             const status = await run('git', ['status', '--porcelain']);
-            core.info(status.output);
-            if (!status.output.trim()) {
+            core.info(status.stdout);
+            if (!status.stdout.trim()) {
               await core.setFailed("Aucune modification : l'agent a signale une ambiguite "
                 + "ou n'a rien modifie. Voir agent-output.log.");
               return;
             }
-            const changed = status.output.split('\n').map(l => l.slice(3).trim())
+            const changed = status.stdout.split('\n').map(l => l.slice(3).trim())
               .filter(Boolean);
             core.info('Modifie : ' + changed.join(', '));
 
             const lint = await run('yamllint', ['--strict', '.']);
-            core.info(lint.output);
+            core.info(lint.stdout);
             if (lint.exit_code !== 0) {
               await core.setFailed("yamllint --strict a echoue : rien n'est pousse.");
               return;
@@ -172,7 +180,7 @@ jobs:
             // --force : la branche appartient a la factory et n'est jamais
             // editee a la main. Un re-execution remplace son contenu.
             const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
-            core.info(push.output);
+            core.info(push.stdout);
             if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
 
             const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);

@@ -53,13 +53,13 @@ echo "✓ Configuration validation complete"
 """
 
 [tasks.factory-tests]
-description = "Run the factory script tests and workflow shell syntax checks"
+description = "Run the factory script tests and inline workflow checks"
 run = """
 echo "Testing factory scripts..."
 node .github/scripts/queue.test.cjs
 node .github/scripts/gh-pages.test.cjs
 bash .github/scripts/render-prompt.test.sh
-python3 .github/scripts/shell-syntax.py
+python3 .github/scripts/workflow-check.py
 echo "✓ Factory tests passed"
 """
 

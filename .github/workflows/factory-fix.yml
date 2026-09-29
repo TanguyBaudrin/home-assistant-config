@@ -110,7 +110,7 @@ jobs:
             // yamllint doit passer AVANT de pousser : pousser du YAML invalide
             // ferait echouer la CI, et l'agent serait rapele en boucle.
             const lint = await run('yamllint', ['--strict', '.']);
-            core.info(lint.output);
+            core.info(lint.stdout);
             if (lint.exit_code !== 0) {
               await core.setFailed(
                 'yamllint --strict a echoue : corrections non poussees. '
@@ -119,8 +119,8 @@ jobs:
             }
 
             const status = await run('git', ['status', '--porcelain']);
-            core.info(status.output);
-            if (!status.output.trim()) {
+            core.info(status.stdout);
+            if (!status.stdout.trim()) {
               core.warning('Aucune modification : point non corrigeable, escalade.');
               await github.rest.issues.addLabels({ ...context.issue,
                 labels: [`factory/attempt-${attempts}`, 'factory/escalade'] });
@@ -132,7 +132,7 @@ jobs:
               `fix: corrections de la revue automatique (essai ${attempts})`]);
             const push = await run('git', ['push', 'origin',
               `HEAD:${context.payload.pull_request.head.ref}`]);
-            core.info(push.output);
+            core.info(push.stdout);
             if (push.exit_code !== 0) {
               await core.setFailed('Le push a echoue.');
               return;

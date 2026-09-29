@@ -83,9 +83,9 @@ jobs:
       - name: Tests de rendu de prompt
         run: bash .github/scripts/render-prompt.test.sh
 
-      - name: Syntaxe shell des blocs run
+      - name: Syntaxe des scripts inlines des workflows
         # `bash -n` ne execute rien mais verifie le quoting. C est ce controle
         # qui aurait attrape un apostrophe glissee dans un programme awk entre
         # apostrophes simples : le workflow echouait alors en syntaxe awk au
         # lieu d echouer au premier run reel.
-        run: python3 .github/scripts/shell-syntax.py
+        run: python3 .github/scripts/workflow-check.py

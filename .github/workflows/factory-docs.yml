@@ -88,15 +88,15 @@ jobs:
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
 
             const status = await run('git', ['status', '--porcelain']);
-            core.info(status.output);
-            if (!status.output.trim()) {
+            core.info(status.stdout);
+            if (!status.stdout.trim()) {
               core.info("Documentation deja a jour : aucune pull request.");
               await core.summary.addRaw("Documentation deja a jour, rien a proposer.").write();
               return;
             }
             // Perimetre documentaire strict, verifie cote workflow.
             const ALLOWED = /^(docs\/|AGENTS\.md$|README\.md$|factory\/policy\.md$)/;
-            const touched = status.output.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
+            const touched = status.stdout.split('\n').map(l => l.slice(3).trim()).filter(Boolean);
             const refused = touched.filter(p => !ALLOWED.test(p));
             if (refused.length) {
               await core.setFailed('Fichiers hors perimetre documentaire : ' + refused.join(', '));
@@ -109,7 +109,7 @@ jobs:
             await run('git', ['commit', '-m', 'docs: mise a jour de la documentation']);
             await run('git', ['branch', '-M', process.env.BRANCH]);
             const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
-            core.info(push.output);
+            core.info(push.stdout);
             if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
 
             const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);
