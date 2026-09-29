@@ -83,6 +83,26 @@ jobs:
             core.setOutput('skip', skip ? 'true' : 'false');
             if (skip) core.info('Etiquette ' + process.env.NO_REVIEW_LABEL + ' : revue ignoree.');
 
+      # L action fait `git fetch` sur la branche de la PR, avec les credentials
+      # ambiants. Le checkout etant en `persist-credentials: false`, il n y en a
+      # aucun, et le fetch echoue sur « could not read Username for
+      # https://github.com ». On ne reactive pas persist-credentials : le token
+      # se retrouverait dans .git/config, que le relecteur peut lire (il a
+      # `read: allow` et lit du texte non fiable). L authentification passe donc
+      # par GIT_CONFIG_*, que git lit dans l environnement : elle vaut pour les
+      # git de l action, et reste hors de portee d un agent sans bash.
+      - name: Fournir un credential git a l'action
+        run: |
+          set -euo pipefail
+          header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\n')"
+          {
+            echo "GIT_CONFIG_COUNT=1"
+            echo "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader"
+            echo "GIT_CONFIG_VALUE_0=$header"
+          } >> "$GITHUB_ENV"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Revue par l'agent
         if: steps.guard.outputs.skip != 'true'
         uses: anomalyco/opencode/github@a3b97d9090ccf4aa9ac32268486283e3131e36b4  # github-v1.2.25
