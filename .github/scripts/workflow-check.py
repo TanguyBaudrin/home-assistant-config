@@ -114,6 +114,34 @@ def check_commit_order(workflow: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_guarded_commit(workflow: pathlib.Path) -> list[str]:
+    """Un `git commit` doit passer par `must`, jamais par `run` directement.
+
+    Le runner n a aucune identite git, et le commit echouait donc sur
+    « Author identity unknown » sans que l etape le remarque : le code de
+    retour n etait pas lu, le script continuait, et l echec remontait trois
+    lignes plus loin sous la forme d un push qui n a rien pousser.
+    """
+    failures = []
+    for kind, _job, label, script in inline_scripts(workflow):
+        if kind != "js":
+            continue
+        for statement in script.split(";"):
+            flat = " ".join(statement.split())
+            # `must` appelle aussi run('git', args), mais avec une variable :
+            # seul un tableau litteral ou un gitAs(...) inline est un appel
+            # direct dont le retour disparait.
+            if re.search(r"\brun\('git'", flat) and "'commit'" in flat:
+                failures.append(f"{workflow.name} / {label}")
+                print(
+                    f"  FAIL garde {workflow.name} / {label} : "
+                    f"`{flat[:60]}...` ignore le code de retour du commit, "
+                    "passer par must(gitAs(...))"
+                )
+                break
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -124,13 +152,15 @@ def main(argv: list[str]) -> int:
     shell = [f for w in workflows for f in check_shell(w)]
     api = [f for w in workflows for f in check_exec_api(w)]
     order = [f for w in workflows for f in check_commit_order(w)]
+    guarded = [f for w in workflows for f in check_guarded_commit(w)]
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api or order:
+    if shell or api or order or guarded:
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
             f"{len(api)} appel(s) exec invalide(s), "
-            f"{len(order)} ordre(s) de commit invalide(s)"
+            f"{len(order)} ordre(s) de commit invalide(s), "
+            f"{len(guarded)} commit(s) non garde(s)"
         )
         return 1
     print(f"  ok   {total} blocs inlines : shell, API exec et commits valides")

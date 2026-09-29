@@ -181,6 +181,29 @@ jobs:
               { ignoreReturnCode: true, env: { ...process.env, ...gitAuthEnv() } },
             );
 
+            // Le runner n a aucune identite git, et on ne veut rien laisser
+            // derriere dans sa config : l identite est passee a la seule
+            // commande qui en a besoin, le commit. L auteur est le compte
+            // Actions, donc la pull request reste rattachee au run qui l a
+            // produite plutot qu a une identite de machine.
+            const gitAs = (...args) => ['-c', 'user.name=github-actions[bot]',
+              '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+              ...args];
+
+            // Aucun `git commit` ne doit etre ignore. Un commit qui echoue en
+            // silence, suivi d un push qui n a rien pousser, donne un message
+            // trompeur trois lignes plus loin.
+            const must = async (args, label) => {
+              const r = await run('git', args);
+              if (r.exitCode !== 0) {
+                core.info(r.stdout);
+                core.info(r.stderr);
+                await core.setFailed(label);
+                return false;
+              }
+              return true;
+            };
+
             // yamllint doit passer AVANT de pousser : pousser du YAML invalide
             // ferait echouer la CI, et l'agent serait rapele en boucle.
             const lint = await run('yamllint', ['--strict', '.']);
@@ -210,12 +233,14 @@ jobs:
             }
             core.info('Modifie : ' + changed.join(', '));
 
-            await run('git', ['add', '-A']);
+            if (!await must(['add', '-A'], 'git add a echoue.')) { return; }
             // Avant le commit : apres, il serait deja trop tard, le journal
             // partirait dans la pull request.
-            await run('git', ['reset', '-q', 'agent-output.log']);
-            await run('git', ['commit', '-m',
-              `fix: corrections de la revue automatique (essai ${attempts})`]);
+            if (!await must(['reset', '-q', 'agent-output.log'],
+              'git reset a echoue.')) { return; }
+            if (!await must(gitAs('commit', '-m',
+              `fix: corrections de la revue automatique (essai ${attempts})`),
+              'Le commit a echoue.')) { return; }
             const push = await pushBranch(`HEAD:${context.payload.pull_request.head.ref}`);
             core.info(push.stdout);
             if (push.exitCode !== 0) {
