@@ -2,7 +2,7 @@
 description: Migre une automatisation heritee de automations/to_split.yaml vers automations/<zone>/<kind>.yaml selon les conventions du depot
 mode: all
 temperature: 0.1
-color: blue
+color: primary
 permission:
   read: allow
   glob: allow

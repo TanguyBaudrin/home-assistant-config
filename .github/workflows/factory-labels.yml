@@ -1,0 +1,86 @@
+# Provisionnement des etiquettes de l'usine.
+#
+# Indispensable avant le premier passage d'un agent : poser une etiquette
+# inexistante renvoie 422, donc factory-review echouerait en appliquant son
+# verdict et factory-build ne pourrait jamais etre declenche.
+#
+# Idempotent : cree les etiquettes manquantes et met a jour la couleur et la
+# description des existantes, sans jamais supprimer une etiquette. Supprimer
+# une etiquette par erreur ferait perdre l'historique de triage, donc ce
+# workflow ne le fait pas, meme pour une etiquette retiree de factory/labels.yml.
+name: Factory Labels
+
+on:
+  push:
+    paths: ['factory/labels.yml', '.github/workflows/factory-labels.yml']
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  labels:
+    name: Synchroniser les etiquettes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Creer et mettre a jour les etiquettes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const raw = fs.readFileSync('factory/labels.yml', 'utf8');
+            // Format volontairement simple pour ne pas dependre d'un parseur
+            // YAML dans le contexte de l'action.
+            const wanted = [];
+            let cur = null;
+            for (const l of raw.split('\n')) {
+              if (/^#/.test(l) || !l.trim()) continue;
+              const head = /^- name:\s*(\S+)/.exec(l);
+              if (head) { cur = { name: head[1] }; wanted.push(cur); continue; }
+              if (!cur) continue;
+              const colour = /^\s*color:\s*"?([0-9A-Fa-f]{6})"?/.exec(l);
+              if (colour) cur.color = colour[1];
+              const desc = /^\s*description:\s*"?(.*?)"?\s*$/.exec(l);
+              if (desc) cur.description = desc[1];
+            }
+            if (!wanted.length) { core.setFailed('Aucune etiquette trouvee.'); return; }
+
+            const existing = new Map();
+            for await (const p of github.paginate.iterator(
+              github.rest.issues.listLabelsForRepo, { ...context.repo, per_page: 100 })) {
+              existing.set(p.name, p);
+            }
+
+            let created = 0, updated = 0;
+            for (const l of wanted) {
+              const before = existing.get(l.name);
+              if (!before) {
+                await github.rest.issues.createLabel({
+                  ...context.repo, name: l.name,
+                  color: l.color ?? 'ededed', description: l.description ?? '',
+                });
+                created++;
+                continue;
+              }
+              if (before.color === l.color && before.description === l.description) continue;
+              await github.rest.issues.updateLabel({
+                ...context.repo, name: l.name,
+                color: l.color ?? before.color,
+                description: l.description ?? '',
+              });
+              updated++;
+            }
+            core.info(`${wanted.length} etiquettes declarees : ${created} creees, ${updated} mises a jour.`);
+            for (const l of wanted) {
+              if (!existing.has(l.name)) core.info(`  + ${l.name}`);
+            }
+            // Rappel utile, pas bloquant.
+            const unused = [...existing.keys()].filter(n => n.startsWith('factory/')
+              && !wanted.some(l => l.name === n));
+            if (unused.length) core.warning('factory/* non declarees dans labels.yml : ' + unused.join(', '));

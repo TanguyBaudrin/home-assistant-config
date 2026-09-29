@@ -16,6 +16,11 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  # CLI epinglee : sans --version le script d'installation telecharge la
+  # derniere version, qui peut casser la frontmatter d'un agent.
+  OPENCODE_VERSION: "1.18.33"
+
 concurrency:
   group: factory-docs
   cancel-in-progress: false
@@ -59,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.opencode/bin
-          curl -fsSL https://opencode.ai/install | bash
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
           ~/.opencode/bin/opencode --version
 
       - name: Mettre a jour la documentation
@@ -123,5 +128,8 @@ jobs:
                 '', report, '', '</details>',
               ].join('\n'),
             });
+            await github.rest.issues.addLabels({ ...context.repo,
+              issue_number: pull.number, labels: ['factory/docs'],
+            }).catch(() => {});
             core.info('Pull request : ' + pull.html_url);
             await core.summary.addRaw('Pull request : ' + pull.html_url).write();

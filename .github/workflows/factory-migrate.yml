@@ -35,6 +35,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # CLI epinglee : sans --version le script d\'installation telecharge la
+  # derniere version, qui peut casser la frontmatter d\'un agent.
+  OPENCODE_VERSION: "1.18.33"
   BRANCH_PREFIX: factory/migrate/
   STALE_DAYS: "7"
   MAX_ATTEMPTS: "3"
@@ -120,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.opencode/bin
-          curl -fsSL https://opencode.ai/install | bash
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
           ~/.opencode/bin/opencode --version
 
       # Les variables OmniRoute viennent de l'environnement du runner
@@ -190,6 +193,9 @@ jobs:
                 '', report, '', '</details>',
               ].join('\n'),
             });
+            await github.rest.issues.addLabels({ ...context.repo,
+              issue_number: pull.number, labels: ['factory/migrate'],
+            }).catch(() => {});
             core.info('Pull request : ' + pull.html_url);
 
       - name: Signaler les pull requests de migration en attente

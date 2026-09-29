@@ -92,14 +92,53 @@ The self-hosted runner inherits `HASS_TOKEN`, which controls the house, and
 Secrets come from `/etc/ha-factory/runner.env` via systemd `EnvironmentFile=`
 on the runner, not from GitHub secrets. Only `GITHUB_TOKEN` is passed through.
 
+### Version pinning
+
+Everything the factory executes is pinned, because an unpinned CLI that
+resolves to "latest" can break agent frontmatter without any diff in the repo:
+
+- the action is pinned to the commit SHA of `github-v1.2.25`
+  (`a3b97d9`), not to `@latest`;
+- the CLI is installed with `opencode install --version 1.18.33` via
+  `OPENCODE_VERSION`, in all four jobs that install it.
+
+Verify the pins locally:
+
+```bash
+~/.opencode/bin/opencode --version          # doit afficher 1.18.33
+~/.opencode/bin/opencode agent list         # les 5 agents factory-*
+```
+
+Note the action's composite step installs its own CLI at run time. Since the
+reviewer is the only job using the action, its CLI version is the one thing
+not controlled by `OPENCODE_VERSION`; that is the reason the reviewer needs no
+write access and therefore cannot be harmed by a version change.
+
+### Labels must exist before any agent runs
+
+`issues.addLabels` returns 422 for a label that does not exist, which would make
+`factory-review` fail while applying its verdict and would make
+`factory-build` impossible to trigger. `factory/labels.yml` declares them and
+`.github/workflows/factory-labels.yml` creates them on push; it is idempotent
+and never deletes a label, since deleting one would discard triage history.
+
+Labels are the human gate: applying `factory/build` to an issue is what authorises
+the agent to execute it. That is deliberate on a public repository, where anyone
+can open an issue but only someone with write access can label it.
+
 ### Why the reviewer uses the action and the fixer uses the CLI
 
 `anomalyco/opencode/github` ignores its `agent` input — the published CLI never
 reads that variable — and `default_agent` is a single global value. A read-only
 reviewer and a writing fixer therefore need two separate invocations: the action
-for the reviewer, `opencode run --agent factory-fix` for the fixer. The action's
-composite step installs the latest CLI at run time, so pinning the action alone
-does not pin the CLI.
+for the reviewer, `opencode run --agent factory-fix` for the fixer.
+
+This is confirmed, not assumed: `opencode agent list` shows the five
+`factory-*` agents as `mode: all`, and `opencode run --help` lists `--agent`.
+`opencode agent list` also confirms the permission model actually took effect —
+`factory-review` reports `edit: deny` and `bash: deny`, the four writing agents
+report `edit: allow` with a bash allowlist.
+
 
 ### Cost and retry bounds
 

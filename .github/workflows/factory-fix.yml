@@ -28,6 +28,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # CLI epinglee : sans --version le script d\'installation telecharge la
+  # derniere version, qui peut casser la frontmatter d\'un agent.
+  OPENCODE_VERSION: "1.18.33"
   NEEDS_FIX_LABEL: factory/needs-fix
 
 jobs:
@@ -77,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.opencode/bin
-          curl -fsSL https://opencode.ai/install | bash
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
           echo "installed=$(~/.opencode/bin/opencode --version)" >> "$GITHUB_OUTPUT"
 
       # Les variables OmniRoute et HASS_* sont deja dans l'environnement du

@@ -1,0 +1,57 @@
+# Etiquettes de l'usine d'agents.
+#
+# Definies ici, creees par .github/workflows/factory-labels.yml.
+#
+# Pourquoi un fichier : `issues.addLabels` renvoie 422 si l'etiquette
+# n'existe pas. Sans ce provisionnement, factory-review echouerait en
+# appliquant son verdict et factory-build ne pourrait jamais etre
+# declenche. Les etiquettes doivent donc exister AVANT le premier passage
+# d'un agent.
+#
+# Convention : tout ce qui declenche un agent est un `factory/*`. Une
+# etiquette posee a la main declenche du travail, donc c'est un acte
+# humain delimite, pas un automatisme.
+#
+# Appliquer `factory/build` a une issue autorise l'agent a l'executer :
+# n'utilisez cette etiquette que sur une issue que vous avez lue.
+
+- name: factory/build
+  color: "0E8A16"
+  description: "Autorise l'agent a transformer cette issue en pull request"
+
+- name: factory/needs-fix
+  color: "D93F0B"
+  description: "Posee par la revue, declenche le correcteur"
+
+- name: factory/escalade
+  color: "B60205"
+  description: "Trop de tentatives ou revue non actionnable : arbitrage humain"
+
+- name: factory/docs
+  color: "0075CA"
+  description: "Documentation a mettre a jour"
+
+- name: factory/migrate
+  color: "5319E7"
+  description: "Migration d'automatisation heritee"
+
+- name: factory/no-review
+  color: "C2E0C6"
+  description: "Exclut la pull request de la revue automatique"
+
+# Les etiquettes de tentative sont posees par le correcteur a chaque passage.
+# Elles doivent etre declarees a l'avance : `addLabels` renvoie 422 sur une
+# etiquette absente, et le compteur de tentatives est justement ce qui borne la
+# boucle de correction. Declarees jusqu'a 3, la borne de la revue (`MAX_ATTEMPTS`)
+# est de 2 : au-dela, la revue escalade au lieu de re-poser needs-fix.
+- name: factory/attempt-1
+  color: "FBCA04"
+  description: "Une correction automatique a deja ete tentee"
+
+- name: factory/attempt-2
+  color: "FBCA04"
+  description: "Deux corrections automatiques ont deja ete tentees"
+
+- name: factory/attempt-3
+  color: "FBCA04"
+  description: "Trois corrections automatiques ont deja ete tentees"

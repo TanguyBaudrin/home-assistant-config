@@ -2,7 +2,7 @@
 description: Transforme une issue GitHub en pull request de configuration Home Assistant, sans modifier ni la CI ni les secrets
 mode: all
 temperature: 0.1
-color: green
+color: accent
 permission:
   read: allow
   glob: allow

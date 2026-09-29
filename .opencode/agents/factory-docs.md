@@ -2,7 +2,7 @@
 description: Met a jour la documentation du depot pour refleter les changements d'automatisations et d'entites
 mode: all
 temperature: 0.1
-color: cyan
+color: info
 permission:
   read: allow
   glob: allow
