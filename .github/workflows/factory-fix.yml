@@ -91,41 +91,51 @@ jobs:
       # secrets GitHub.
       - name: Installer les validateurs
         # L etape de validation appelle yamllint par son nom, et le runner n en
-        # a pas : sans cette installation, exec.getExecOutput leve une erreur
-        # peu parlante ("Unable to locate executable file").
+        # a pas : sans cela, exec.getExecOutput leve une erreur peu parlante
+        # ("Unable to locate executable file").
         #
-        # Installation par `pip install --target` plutot que dans un venv : le
-        # python du runner n a pas ensurepip, donc `python3 -m venv` echoue
-        # faute de paquet python3-venv. Et plutot que `--user`, qui se heurte a
-        # PEP 668 sur les distributions recentes. Rien n entre dans
-        # l environnement systeme du runner.
-        # Meme version que ci.yml et que le hook pre-commit.
+        # On n installe rien depuis le reseau avec un script telecharge a l aveu
+        # (genre get-pip.py) : ce job porte HASS_TOKEN. Si le runner n a ni
+        # yamllint ni pip, c est une dependance systeme a poser, pas un
+        # contournement a automatiser ici.
         run: |
           set -euo pipefail
-          if ! python3 -m pip --version >/dev/null 2>&1; then
-            echo "::error::pip absent du runner : apt install python3-pip"
+          export PYTHONPATH="${PYTHONPATH:-}"
+          if command -v yamllint >/dev/null 2>&1; then
+            echo "yamllint deja present : $(yamllint --version)"
+          elif python3 -m pip --version >/dev/null 2>&1; then
+            # venv impossible ici (pas de ensurepip sur le runner) et --user se
+            # heurte a PEP 668 : --target evite les deux et n ecrit rien dans
+            # l environnement systeme du runner.
+            TARGET="$RUNNER_TEMP/pytools"
+            # --break-system-packages n existe qu a partir de pip 23. Sur un pip
+            # plus ancien, le second essai echoue avec un usage illisible : on
+            # garde donc la premiere erreur, qui elle est parlante.
+            if ! first_error=$(python3 -m pip install --disable-pip-version-check \
+                                 --target "$TARGET" "yamllint==1.38.0" 2>&1); then
+              if ! python3 -m pip install --disable-pip-version-check \
+                    --break-system-packages --target "$TARGET" "yamllint==1.38.0"; then
+                echo "$first_error"
+                echo "::error::installation de yamllint impossible avec ce pip"
+                exit 1
+              fi
+            fi
+            # PYTHONPATH n est pas cosmetique : le script `yamllint` cree par
+            # --target fait `from yamllint.cli import run` et ne trouve pas les
+            # paquets installes a cote de lui sans ca.
+            export PYTHONPATH="$TARGET"
+            echo "PYTHONPATH=$TARGET" >> "$GITHUB_ENV"
+            echo "$TARGET/bin" >> "$GITHUB_PATH"
+          else
+            echo "::error::yamllint absent du runner, et pip aussi : rien a installer automatiquement."
+            echo "::error::Sur le runner, au choix :"
+            echo "::error::  - apt install python3-pip  (puis relancer ce workflow)"
+            echo "::error::  - apt install yamllint      (meme version que ci.yml : 1.38.0)"
             exit 1
           fi
-          TARGET="$RUNNER_TEMP/pytools"
-          # Le drapeau n existe qu a partir de pip 23 : on tente sans, et on
-          # ne le rajoute que si le premier essai echoue.
-          if ! python3 -m pip install --disable-pip-version-check \
-               --target "$TARGET" "yamllint==1.38.0"; then
-            echo "::retry:: avec --break-system-packages (PEP 668)"
-            python3 -m pip install --disable-pip-version-check \
-              --break-system-packages --target "$TARGET" "yamllint==1.38.0"
-          fi
-          export PATH="$TARGET/bin:$PATH"
-          export PYTHONPATH="$TARGET"
           command -v yamllint
           yamllint --version
-          # PYTHONPATH est indispensable, pas cosmetique : le script
-          # `yamllint` cree par `pip install --target` fait
-          # `from yamllint.cli import run`, et sans PYTHONPATH il ne trouve
-          # pas les paquets installes a cote de lui et leve un ModuleNotFoundError.
-          # Les deux sont requis dans l etape de validation suivante.
-          echo "PYTHONPATH=$TARGET" >> "$GITHUB_ENV"
-          echo "$TARGET/bin" >> "$GITHUB_PATH"
+          echo "validateur pret"
 
       - name: Corriger avec l'agent
         env:
