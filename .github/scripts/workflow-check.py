@@ -25,7 +25,15 @@ import tempfile
 import yaml
 
 # Lecture d une propriete inexistante sur le retour de getExecOutput.
-EXEC_RESULT_PROPS = re.compile(r"\b(?:status|lint|push|out|result|res)\.output\b")
+# `getExecOutput` renvoie {exitCode, stdout, stderr}. Deux fautes se paient cher
+# et silencieusement : `.output` renvoie undefined, et surtout `.exit_code`
+# aussi, donc `result.exit_code !== 0` est toujours vrai et fait echouer l etape
+# meme quand la commande a reussi. Le second motif est donc `*_code`, pas
+# seulement `.output`.
+EXEC_RESULT_PROPS = re.compile(
+    r"\b(?:status|lint|push|out|result|res)\.output\b"
+    r"|\b\w+\.(?:exit_code|return_code|returncode)\b"
+)
 EXEC_PROPS = ("exitCode", "stdout", "stderr")
 
 

@@ -164,7 +164,7 @@ jobs:
             // ferait echouer la CI, et l'agent serait rapele en boucle.
             const lint = await run('yamllint', ['--strict', '.']);
             core.info(lint.stdout);
-            if (lint.exit_code !== 0) {
+            if (lint.exitCode !== 0) {
               await core.setFailed(
                 'yamllint --strict a echoue : corrections non poussees. '
                 + 'Voir le journal ci-dessus.');
@@ -198,7 +198,7 @@ jobs:
             const push = await run('git', ['push', 'origin',
               `HEAD:${context.payload.pull_request.head.ref}`]);
             core.info(push.stdout);
-            if (push.exit_code !== 0) {
+            if (push.exitCode !== 0) {
               await core.setFailed('Le push a echoue.');
               return;
             }

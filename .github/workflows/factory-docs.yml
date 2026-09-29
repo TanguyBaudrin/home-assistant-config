@@ -116,7 +116,7 @@ jobs:
             await run('git', ['branch', '-M', process.env.BRANCH]);
             const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
             core.info(push.stdout);
-            if (push.exit_code !== 0) { await core.setFailed('Push impossible.'); return; }
+            if (push.exitCode !== 0) { await core.setFailed('Push impossible.'); return; }
 
             const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);
             const pull = await github.rest.pulls.create({
