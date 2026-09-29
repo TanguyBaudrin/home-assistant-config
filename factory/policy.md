@@ -51,13 +51,30 @@ signales comme tels :
 - `The 'purge_interval' option ... is deprecated`
   Avertissement de Home Assistant, a traiter dans la file de migration.
 
+## Tolerance retiree
+
+Une revue a classe « double ouverture des volets par deux automatisations » en
+point mineur, au motif que l'effet final etait identique. **C'est retracte.**
+
+Deux automatisations qui visent les memes entites sous des conditions qui se
+recouvrent rendent le comportement de la maison indetermine : laquelle gagne ?
+La surcouche peut masquer un bug de l'une des deux, empecher une exclusion
+prevue, et n'apporte rien de neuf. Une PR qui ajoute la seconde doit soit
+remplacer proprement la premiere, soit s'y substituer explicitement. C'est un
+conflit fonctionnel, donc bloquant.
+
 ## Regles de decision du relecteur
 
-1. Un point est `BLOQUANT` uniquement s'il **empeche la configuration de
-   fonctionner** ou si son absence **changerait le comportement de la maison**.
+1. Un point est `BLOQUANT` s'il **empeche la configuration de fonctionner**, si
+   son absence **changerait le comportement de la maison**, ou s'il **introduit
+   un conflit fonctionnel** avec une automatisation existante (meme entite ciblee,
+   meme action, conditions qui se recouvrent).
 2. Une preference de style, un nom d'alias, une reformulation de description ne
    sont jamais bloquants.
 3. En cas de doute, classer en `MINEUR`. Le cout d'un faux positif (une boucle
-   de correction qui tourne pour rien) depasse celui d'un faux negatif.
+   de correction qui tourne pour rien) depasse celui d'un faux negatif. Mais un
+   conflit fonctionnel **identifie** — une automatisation existante fait deja le
+   meme travail sur les memes entites — n'est pas un doute : c'est un defaut
+   constate, et il est bloquant.
 4. Ne jamais signaler deux fois la meme chose dans deux pull requests
    consecutives sans que le depot ait change.

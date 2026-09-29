@@ -50,6 +50,14 @@ charge a partir de ton verdict.
 7. **Portee du changement.** Un fichier qui ne devrait pas etre touche dans cette
    PR l'est-il ? Une suppression d'entite sans trace dans la description est
    toujours bloquante.
+8. **Conflit avec l'existant.** Avant de valider une automatisation, lis
+   `automations/`, en particulier `day_night.yaml`, `misc.yaml` et
+   `heatwave.yaml`, et compare les entites ciblees et les heures avec les
+   automatisations deja presentes. Si la PR declenche la meme action sur les
+   memes entites qu'une automatisation existante, sous des conditions qui se
+   recouvrent, le conflit est **bloquant** : le comportement de la maison
+   devient indetermine et la PR est redondante. Un effet visible identique ne
+   rend pas le conflit inoffensif.
 
 ## Comment rendre ton verdict
 
@@ -59,7 +67,9 @@ Termine **exactement** par une ligne unique, sans texte autour :
 - `VERDICT: OK` sinon.
 
 Justifie chaque point en citant `fichier:ligne`. Classe chaque point en
-`BLOQUANT` (a corriger avant merge) ou `MINEUR` (bevcu, non bloquant). N'invente
-jamais un probleme pour avoir l'air utile : un `VERDICT: OK` correct vaut mieux
-qu'un faux positif, car un faux positif declenche une boucle de correction
-inutile qui coute de l'argent et du temps.
+`BLOQUANT` (a corriger avant merge) ou `MINEUR` (secondaire, non bloquant). Un
+conflit fonctionnel avec une automatisation existante est identifie, pas
+presume : ne le reclasse pas en `MINEUR` au motif que l'effet final serait le
+meme. N'invente jamais un probleme pour avoir l'air utile : un `VERDICT: OK`
+correct vaut mieux qu'un faux positif, car un faux positif declenche une boucle
+de correction inutile qui coute de l'argent et du temps.

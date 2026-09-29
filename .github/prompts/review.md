@@ -31,14 +31,25 @@ differences sur la base `main` de ce depot. Les fichiers de reference sont :
    point `BLOQUANT` plutot que de supposer qu'elle existe.
 6. **Portee.** Un fichier hors sujet modifie dans la PR est `BLOQUANT`. Une
    suppression d'entite non mentionnee dans la description est `BLOQUANT`.
+7. **Conflit avec l'existant.** Avant de valider une automatisation, cherche
+   celles qui agissent deja sur les memes entites : lis `automations/`, en
+   particulier `day_night.yaml`, `misc.yaml` et `heatwave.yaml`, et compare les
+   entites ciblees et les heures. Si la PR ajoute un declencheur qui ouvre,
+   ferme ou allume les memes entites qu'une automatisation existante, sous des
+   conditions qui se recouvrent, c'est `BLOQUANT` : deux automatisations
+   concurrentes rendent le comportement de la maison indetermine, et la PR
+   n'apporte alors rien de neuf. L'effet visible identique ne rend pas le
+   conflit inoffensif, et « ce n'est pas l'objet de la PR » ne l'annule pas
+   puisque c'est la PR qui cree le conflit.
 
 ## Regles de ton
 
 - Ecris en francais. Cite `fichier:ligne` pour chaque point.
 - Classe chaque point `BLOQUANT` (a corriger avant merge) ou `MINEUR`.
-- Un point n'est `BLOQUANT` que s'il empeche la configuration de fonctionner ou
-  change le comportement de la maison. Le style, les noms d'alias et les
-  reformulations ne sont jamais bloquants.
+- Un point est `BLOQUANT` s'il empeche la configuration de fonctionner, s'il
+  change le comportement de la maison, ou s'il cree un conflit fonctionnel avec
+  une automatisation existante. Le style, les noms d'alias et les reformulations
+  ne sont jamais bloquants ; un conflit fonctionnel n'est pas du style.
 - N'invente pas de probleme. Un faux positif declenche une boucle de correction
   qui coute de l'argent pour rien.
 
