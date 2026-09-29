@@ -51,3 +51,41 @@ jobs:
               echo "::endgroup::"
             fi
           done
+
+  factory-tests:
+    # Les workflows de l'usine sont du code eux aussi : ils continaient du
+    # shell inline non teste (rendu de prompt, quoting awk) qui a casse en
+    # production sur une vraie issue. Ces tests extraient le code reel des
+    # workflows plutot que de recopier une version divergente.
+    name: Tests usine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer PyYAML
+        run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
+
+      # Ces scripts sortent en 1 des qu une assertion echoue et affichent le
+      # detail de chaque assertion, plus lisible dans les logs que `node --test`.
+      - name: Tests de selection de migration
+        run: node .github/scripts/queue.test.cjs
+
+      - name: Tests de pagination
+        run: node .github/scripts/gh-pages.test.cjs
+
+      - name: Tests de rendu de prompt
+        run: bash .github/scripts/render-prompt.test.sh
+
+      - name: Syntaxe shell des blocs run
+        # `bash -n` ne execute rien mais verifie le quoting. C est ce controle
+        # qui aurait attrape un apostrophe glissee dans un programme awk entre
+        # apostrophes simples : le workflow echouait alors en syntaxe awk au
+        # lieu d echouer au premier run reel.
+        run: python3 .github/scripts/shell-syntax.py

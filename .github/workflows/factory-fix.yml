@@ -72,7 +72,10 @@ jobs:
               return;
             }
             const template = require('fs').readFileSync('.github/prompts/fix.md', 'utf8');
-            const value = template.replace('{{REVIEW_BODY}}', last.body);
+            // Remplacement via fonction : sinon String.replace interprete les
+            // motifs $&, $` et $' dans le corps de la revue, et le prompt
+            // recu par l agent ne correspondrait plus au commentaire publie.
+            const value = template.replace('{{REVIEW_BODY}}', () => last.body ?? '');
             core.setOutput('body', value);
 
       - name: Installer opencode

@@ -98,18 +98,65 @@ jobs:
           ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
           ISSUE_TITLE: ${{ steps.issue.outputs.title }}
           ISSUE_BODY: ${{ steps.issue.outputs.body }}
-          TEMPLATE: ${{ steps.issue.outputs.body }}
         run: |
           set -euo pipefail
-          # Heredoc delimiter unique : le corps de l'issue peut contenir
-          # n'importe quoi, y compris la ligne de fin.
+          # Les valeurs passent par des fichiers et un rendu awk, jamais par
+          # une substitution sed : un corps d'issue est multiligne et peut
+          # contenir |, &, \ ou des $, tous interpretes par sed. La premiere
+          # version du workflow echouait exactement la-dessus, sur une vraie
+          # issue ("unterminated `s' command").
+          mkdir -p "$RUNNER_TEMP/prompt-vars"
+          printf '%s' "$ISSUE_NUMBER" > "$RUNNER_TEMP/prompt-vars/ISSUE_NUMBER"
+          printf '%s' "$ISSUE_TITLE"  > "$RUNNER_TEMP/prompt-vars/ISSUE_TITLE"
+          printf '%s' "$ISSUE_BODY"   > "$RUNNER_TEMP/prompt-vars/ISSUE_BODY"
+
+          awk -v dir="$RUNNER_TEMP/prompt-vars" '
+            {
+              # ATTENTION : ce programme est entre apostrophes simples, donc il
+              # ne doit contenir AUCUN apostrophe, pas meme en commentaire.
+              # Le balayage avance dans `rest` et jamais dans `out` : si une
+              # valeur inseree contient elle-meme un placeholder, on ne le
+              # rescane pas, sinon la boucle est infinie.
+              out = ""
+              rest = $0
+              while (match(rest, /\{\{[A-Z_][A-Z0-9_]*\}\}/)) {
+                out = out substr(rest, 1, RSTART - 1)
+                key = substr(rest, RSTART + 2, RLENGTH - 4)
+                f = dir "/" key
+                if ((getline v < f) > 0) {
+                  val = v
+                  while ((getline v < f) > 0) val = val "\n" v
+                  close(f)
+                  out = out val
+                } else {
+                  # Fichier absent : on laisse le placeholder visible pour que
+                  # le garde-fou plus bas echoue. Un fichier vide en revanche
+                  # est legitime (corps d issue vide) et donne bien val vide.
+                  out = out substr(rest, RSTART, RLENGTH)
+                }
+                rest = substr(rest, RSTART + RLENGTH)
+              }
+              print out rest
+            }
+          ' .github/prompts/build.md > "$RUNNER_TEMP/prompt-rendered.md"
+
+          if grep -q '{{[A-Z_]' "$RUNNER_TEMP/prompt-rendered.md"; then
+            echo "::error::placeholder non resolu dans le prompt rendu"
+            grep -n '{{[A-Z_]' "$RUNNER_TEMP/prompt-rendered.md"
+            exit 1
+          fi
+          # Delimiteur aleatoire : le prompt contient du texte d issue, donc un
+          # delimiteur fixe pourrait etre cite par l auteur, tronquer la sortie
+          # GITHUB_OUTPUT, voire y injecter des cles.
+          delim="FACTORY_PROMPT_$(openssl rand -hex 16)"
+          if grep -qxF "$delim" "$RUNNER_TEMP/prompt-rendered.md"; then
+            echo "::error::collision improbable de delimiteur GITHUB_OUTPUT"
+            exit 1
+          fi
           {
-            echo 'body<<FACTORY_PROMPT_EOF'
-            sed -e "s/{{ISSUE_NUMBER}}/${ISSUE_NUMBER}/" \
-                -e "s|{{ISSUE_TITLE}}|${ISSUE_TITLE}|" \
-                -e "s|{{ISSUE_BODY}}|${TEMPLATE}|" \
-                .github/prompts/build.md
-            echo 'FACTORY_PROMPT_EOF'
+            echo "body<<$delim"
+            cat "$RUNNER_TEMP/prompt-rendered.md"
+            echo "$delim"
           } >> "$GITHUB_OUTPUT"
 
       - name: Installer opencode
