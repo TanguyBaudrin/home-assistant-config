@@ -203,11 +203,15 @@ jobs:
           curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
           ~/.opencode/bin/opencode --version
 
+      # La variable presente ne dit pourtant rien de l etat du fournisseur. Ce
+      # controle a passe vert sur les runs 36625944589 et 36626065820, tous deux
+      # confronts a un « Unexpected server error » d OmniRoute. Il faut donc
+      # poser une question au modele, pas seulement lire l environnement : sinon
+      # un fournisseur tombe et un agent qui rejette une requete trop longue se
+      # presentent tous les deux par « l agent a echoue », et rien dans le
+      # journal ne permet de les distinguer.
       - name: Verifier la configuration OmniRoute
         if: steps.issue.outputs.skip != 'true'
-        # opencode.json resout {env:OMNIROUTER_BASE_URL} : sans la variable,
-        # baseURL vaut chaine vide et l'agent echoue sur une erreur
-        # incomprehensible, `/chat/completions cannot be parsed as a URL`.
         run: |
           set -euo pipefail
           missing=()
@@ -220,6 +224,26 @@ jobs:
             exit 1
           fi
           echo "OmniRoute configuree sur ${OMNIROUTER_BASE_URL}"
+
+          # Appel minimal, sans agent ni outil : quelques jetons, en mode non
+          # flux. C'est le controle de sante du fournisseur, distinct de la
+          # demande de l agent.
+          body='{"model":"agnes/agnes-2.5-flash","max_tokens":4,"stream":false,"messages":[{"role":"user","content":"ping"}]}'
+          code=$(curl -sS -m 60 -o /tmp/omniroute-probe.json -w '%{http_code}' \
+            -X POST "${OMNIROUTER_BASE_URL%/}/chat/completions" \
+            -H "Authorization: Bearer ${OMNIROUTER_API_KEY}" \
+            -H 'Content-Type: application/json' \
+            -d "$body" || echo 000)
+          echo "OmniRoute a repondu en HTTP ${code}"
+          if [ "$code" != "200" ]; then
+            echo "::error::OmniRoute ne repond pas. Corps de la reponse :"
+            head -c 500 /tmp/omniroute-probe.json 2>/dev/null || true
+            echo
+            echo "::error::L'echec vient du fournisseur, pas de l'issue ni de l'agent."
+            echo "::error::Relaancer ce run quand OmniRoute repond : rien n'a ete consomme."
+            exit 1
+          fi
+          echo "OmniRoute repond."
 
       # Les variables OmniRoute viennent de l'environnement du runner
       # (/etc/ha-factory/runner.env), pas des secrets GitHub.
