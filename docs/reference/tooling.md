@@ -92,6 +92,18 @@ The self-hosted runner inherits `HASS_TOKEN`, which controls the house, and
 Secrets come from `/etc/ha-factory/runner.env` via systemd `EnvironmentFile=`
 on the runner, not from GitHub secrets. Only `GITHUB_TOKEN` is passed through.
 
+That file must define `OMNIROUTER_BASE_URL` and `OMNIROUTER_API_KEY`, which
+`opencode.json` resolves as `{env:OMNIROUTER_BASE_URL}`. If either is missing,
+`baseURL` becomes an empty string and the agent dies with an opaque
+`/chat/completions cannot be parsed as a URL`. Every writing workflow now
+checks both variables before invoking the agent and names the missing one, so
+the failure points at `/etc/ha-factory/runner.env` instead of at OpenCode. After
+editing that file, reload the runner service so the environment is re-read:
+
+```bash
+sudo systemctl restart "actions.runner.<runner-name>"
+```
+
 ### Version pinning
 
 Everything the factory executes is pinned, because an unpinned CLI that
