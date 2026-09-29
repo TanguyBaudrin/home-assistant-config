@@ -223,18 +223,41 @@ jobs:
 
       # Les variables OmniRoute viennent de l'environnement du runner
       # (/etc/ha-factory/runner.env), pas des secrets GitHub.
+      #
+      # Retry borné autour de l'agent. OmniRoute rend des 5xx transitoires :
+      # « Service temporarily unavailable due to resource pressure » au run
+      # 36620883417, « Unexpected server error » aux runs 36625944589 et
+      # 36626065820, après 3,4 s et sans qu'aucune étape du dépôt soit en cause.
+      # Sans nouvelle tentative, une indisponibilité de quelques minutes chez
+      # le fournisseur suffit a bloquer la planification d'une issue, et le
+      # seul recours est de relancer le run a la main.
+      #
+      # Le retry est sur ici parce que l'agent est en lecture seule : il ne
+      # modifie rien, donc le repeter ne peut pas doubler un effet. Ce n'est pas
+      # vrai du correcteur, qui écrit et commite : la repetition y exigerait un
+      # garde-fou sur l'etat de l'arbre.
       - name: Rediger le plan
         if: steps.issue.outputs.skip != 'true'
         env:
           PROMPT_BODY: ${{ steps.issue.outputs.prompt }}
         run: |
           set -euo pipefail
-          # pipefail est indispensable : sans lui, `| tee` renvoie le statut de
-          # tee et l'etape passe au vert meme si l'agent a echoue.
-          ~/.opencode/bin/opencode run \
-            --agent factory-spec \
-            --model omnirouter/agnes/agnes-2.5-flash \
-            "$PROMPT_BODY" 2>&1 | tee agent-output.log
+          for attempt in 1 2 3; do
+            # pipefail est indispensable : sans lui, `| tee` renvoie le statut
+            # de tee et l'etape passe au vert meme si l'agent a echoue.
+            if ~/.opencode/bin/opencode run \
+                 --agent factory-spec \
+                 --model omnirouter/agnes/agnes-2.5-flash \
+                 "$PROMPT_BODY" 2>&1 | tee agent-output.log; then
+              exit 0
+            fi
+            echo "::warning::L'agent a echoue (essai ${attempt}/3)."
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 20))
+            fi
+          done
+          echo "::error::L'agent a echoue trois fois de suite."
+          exit 1
 
       - name: Publier le plan
         if: steps.issue.outputs.skip != 'true'
