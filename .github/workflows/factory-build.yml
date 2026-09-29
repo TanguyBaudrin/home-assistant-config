@@ -168,19 +168,42 @@ jobs:
           ~/.opencode/bin/opencode --version
 
       - name: Installer les validateurs
-        # L etape de validation appelle yamllint par son nom. Sans cette
-        # installation, exec.getExecOutput leve une erreur peu parlante
-        # ("Unable to locate executable file") au lieu de dire ce qui manque.
-        # Un venv, et non `pip install --user` : sur une distribution recente,
-        # pip refuse d ecrire dans l environnement systeme (PEP 668).
+        # L etape de validation appelle yamllint par son nom, et le runner n en
+        # a pas : sans cette installation, exec.getExecOutput leve une erreur
+        # peu parlante ("Unable to locate executable file").
+        #
+        # Installation par `pip install --target` plutot que dans un venv : le
+        # python du runner n a pas ensurepip, donc `python3 -m venv` echoue
+        # faute de paquet python3-venv. Et plutot que `--user`, qui se heurte a
+        # PEP 668 sur les distributions recentes. Rien n entre dans
+        # l environnement systeme du runner.
         # Meme version que ci.yml et que le hook pre-commit.
         run: |
           set -euo pipefail
-          VENV="$RUNNER_TEMP/validate-venv"
-          python3 -m venv "$VENV"
-          "$VENV/bin/pip" install --disable-pip-version-check "yamllint==1.38.0"
-          "$VENV/bin/yamllint" --version
-          echo "$VENV/bin" >> "$GITHUB_PATH"
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            echo "::error::pip absent du runner : apt install python3-pip"
+            exit 1
+          fi
+          TARGET="$RUNNER_TEMP/pytools"
+          # Le drapeau n existe qu a partir de pip 23 : on tente sans, et on
+          # ne le rajoute que si le premier essai echoue.
+          if ! python3 -m pip install --disable-pip-version-check \
+               --target "$TARGET" "yamllint==1.38.0"; then
+            echo "::retry:: avec --break-system-packages (PEP 668)"
+            python3 -m pip install --disable-pip-version-check \
+              --break-system-packages --target "$TARGET" "yamllint==1.38.0"
+          fi
+          export PATH="$TARGET/bin:$PATH"
+          export PYTHONPATH="$TARGET"
+          command -v yamllint
+          yamllint --version
+          # PYTHONPATH est indispensable, pas cosmetique : le script
+          # `yamllint` cree par `pip install --target` fait
+          # `from yamllint.cli import run`, et sans PYTHONPATH il ne trouve
+          # pas les paquets installes a cote de lui et leve un ModuleNotFoundError.
+          # Les deux sont requis dans l etape de validation suivante.
+          echo "PYTHONPATH=$TARGET" >> "$GITHUB_ENV"
+          echo "$TARGET/bin" >> "$GITHUB_PATH"
 
       - name: Verifier la configuration OmniRoute
         if: steps.issue.outputs.skip != 'true'
