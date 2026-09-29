@@ -38,6 +38,14 @@ AGENT_COLORS = (
 # appel a l action opencode.
 AGENT_REFERENCE = re.compile(r"--agent[= ]+([\w-]+)")
 
+# Modele nomme par un workflow, soit par `--model`, soit par l entree `model:`
+# de l action opencode. La premiere composante est le nom du provider, et c est
+# elle que l on compare a opencode.json.
+MODEL_REFERENCE = re.compile(
+    r"--model[= ]+([\w.-]+/[\w./-]+)|^model:\s*([\w.-]+/[\w./-]+)\s*$",
+    re.MULTILINE,
+)
+
 # Lecture d une propriete inexistante sur le retour de getExecOutput.
 # `getExecOutput` renvoie {exitCode, stdout, stderr}. Deux fautes se paient cher
 # et silencieusement : `.output` renvoie undefined, et surtout `.exit_code`
@@ -232,6 +240,56 @@ def check_agents(agents_dir: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_models(root: pathlib.Path) -> list[str]:
+    """Verifie que le provider de chaque modeleappele existe dans opencode.json.
+
+    Le nom du provider est la premiere composante de `provider/modele`. Un
+    provider mal orthographie est le pire genre d'erreur ici : opencode ne
+    leve aucune erreur explicite sur le nom, il echoue plus tard avec un
+    « Unexpected server error » et une reference opaque, indistinguishable d
+    une panne du fournisseur. C est ce qu a fait `omnirouter` dans
+    factory-spec.yml, un `o` de trop : la sonde de sante d OmniRoute, elle,
+    repondait 200 pendant que l agent ne pouvait pas demarrer.
+
+    On compare aussi `model` et `small_model` d opencode.json, pour que la
+    config ne cite pas un provider absent d elle-meme.
+    """
+    config = root / "opencode.json"
+    if not config.exists():
+        return [f"{config} absent : impossible de verifier les modeles"]
+    try:
+        data = json.loads(config.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"{config}: illisible ({exc})"]
+
+    declared = set((data.get("provider") or {}))
+    if not declared:
+        return [f"{config}: aucun provider declare"]
+
+    failures: list[str] = []
+
+    def check(reference: str, origin: str) -> None:
+        provider = reference.split("/", 1)[0]
+        if provider not in declared:
+            failures.append(
+                f"{origin}: provider {provider!r} inconnu, le modele cite "
+                f"{reference!r} (declarés : {', '.join(sorted(declared))})"
+            )
+
+    for key in ("model", "small_model"):
+        value = data.get(key)
+        if isinstance(value, str) and "/" in value:
+            check(value, f"{config}: {key}")
+
+    for workflow in sorted((root / ".github/workflows").glob("*.yml")):
+        text = workflow.read_text(encoding="utf-8")
+        for cli, action in MODEL_REFERENCE.findall(text):
+            reference = (cli or action).strip()
+            if reference:
+                check(reference, workflow.name)
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -245,22 +303,25 @@ def main(argv: list[str]) -> int:
     guarded = [f for w in workflows for f in check_guarded_commit(w)]
     repo_root = pathlib.Path.cwd()
     agents = check_agents(repo_root / ".opencode/agents")
+    models = check_models(repo_root)
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api or order or guarded or agents:
-        for line in shell + api + order + guarded + agents:
+    if shell or api or order or guarded or agents or models:
+        for line in shell + api + order + guarded + agents + models:
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
             f"{len(api)} appel(s) exec invalide(s), "
             f"{len(order)} ordre(s) de commit invalide(s), "
             f"{len(guarded)} commit(s) non garde(s), "
-            f"{len(agents)} agent(s) invalide(s)",
+            f"{len(agents)} agent(s) invalide(s), "
+            f"{len(models)} modele(s) invalide(s)",
             file=sys.stderr,
         )
         return 1
     print(f"  ok   {total} blocs inlines : shell, API exec et commits valides")
     print("  ok   agents opencode : frontmatter dans la palette, noms resolus")
+    print("  ok   modeles : provider declare dans opencode.json")
     return 0
 
 

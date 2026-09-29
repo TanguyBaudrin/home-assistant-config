@@ -271,7 +271,7 @@ jobs:
             # de tee et l'etape passe au vert meme si l'agent a echoue.
             if ~/.opencode/bin/opencode run \
                  --agent factory-spec \
-                 --model omnirouter/agnes/agnes-2.5-flash \
+                 --model omniroute/agnes/agnes-2.5-flash \
                  "$PROMPT_BODY" 2>&1 | tee agent-output.log; then
               exit 0
             fi
