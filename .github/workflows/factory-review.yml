@@ -87,6 +87,18 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         uses: anomalyco/opencode/github@a3b97d9090ccf4aa9ac32268486283e3131e36b4  # github-v1.2.25
         env:
+          # L'action documente `use_github_token: true` comme « uses the
+          # GITHUB_TOKEN env var », mais sa source lit `process.env["TOKEN"]`
+          # (index.ts:342) et ne consulte jamais USE_GITHUB_TOKEN. Avec le seul
+          # GITHUB_TOKEN, l'action retombait sur l'echange OIDC de l'App
+          # opencode, puis verifiait les droits du collaborateur
+          # `github-actions[bot]`, qui n'en a aucun : « User
+          # github-actions[bot] does not have write permissions ». Et le
+          # rapport, poste avec un token inutilisable, finissait en
+          # « Resource not accessible by integration ». TOKEN est la variable
+          # que le code lit reellement, pour le controle de droits comme pour
+          # l'appel a l'API.
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: omniroute/agnes/agnes-2.5-flash
