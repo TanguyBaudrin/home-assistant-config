@@ -11,19 +11,13 @@
 name: Factory Review
 
 on:
+  # Une seule voie d'entree. `workflow_dispatch` a ete essaye, puis retire :
+  # l'action opencode tire l'identifiant de son commentaire de
+  # `payload.issue.number`, absent d'une charge utile de dispatch, et elle ne
+  # poste donc rien (run 36622093227). Relire une pull request a la main se fait
+  # en poussant un commit vide, ou en fermant puis rouvrant la pull request.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  # Seconde voie d'entree, utilisee par factory-fix.yml apres avoir pousse ses
-  # corrections. Un push fait avec le GITHUB_TOKEN ne rededecenche aucun
-  # workflow, donc la revue doit pouvoir etre relancee explicitement, sans quoi
-  # la boucle s'arrete a la premiere correction. Elle permet aussi de relire
-  # une pull request a la main.
-  workflow_dispatch:
-    inputs:
-      pr:
-        description: Numero de la pull request a relire
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -36,7 +30,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: factory-review-${{ inputs.pr || github.event.pull_request.number }}
+  group: factory-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
@@ -51,10 +45,7 @@ jobs:
     # Le runner auto-heberge herite HASS_TOKEN, qui pilote la maison. On refuse
     # donc tout code provenant d'un fork : les forks n'executent que le CI
     # inerte (yamllint + check_config).
-    if: >-
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository) ||
-      github.event_name == 'workflow_dispatch'
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, ha-factory]
     timeout-minutes: 30
     steps:
@@ -63,25 +54,19 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-          # Sur un pull_request, `github.ref` est deja le merge ref. Sur un
-          # dispatch il n y a pas de ref implicite : on vise donc le merge ref
-          # explicitement, sinon on relirait `main` au lieu de la pull request.
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/merge', inputs.pr) || github.ref }}
 
-      # Les deux entrees ne portent pas la meme charge utile : `pull_request`
-      # d'un cote, `inputs` de l'autre. On resout donc ici, une fois, ce dont la
-      # revue a besoin, et les etapes suivantes n'utilisent plus que ces
-      # sorties. Le controle anti-fork est refait depuis l'API : sur un dispatch,
-      # la charge utile ne contient qu'un numero, et c'est ce numero qu'il faut
-      # croire avant d'aller chercher la branche.
+      # La charge utile d'un `pull_request` porte la pull request, mais pas la
+      # liste de ses etiquettes ni son numero d'essai. On resout donc ici, une
+      # fois, ce dont la revue a besoin, et les etapes suivantes n'utilisent
+      # plus que ces sorties. Le controle anti-fork est refait depuis l'API :
+      # `if:` lit la charge utile brute, et c'est la branche resolue par
+      # l'API qui fait foi.
       - name: Resoudre la pull request
         id: resolve
         uses: actions/github-script@v7
         with:
           script: |
-            const number = context.eventName === 'workflow_dispatch'
-              ? Number(context.payload.inputs?.pr)
-              : context.payload.pull_request?.number;
+            const number = context.payload.pull_request?.number;
             if (!Number.isInteger(number) || number <= 0) {
               await core.setFailed('Numeros de pull request introuvable dans l evenement.');
               return;
@@ -182,19 +167,41 @@ jobs:
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
           ATTEMPTS: ${{ steps.resolve.outputs.attempts }}
           BASE_REF: ${{ steps.resolve.outputs.base_ref }}
+          RUN_ID: ${{ github.run_id }}
         with:
           script: |
             const pr = { owner: context.repo.owner, repo: context.repo.repo,
                          issue_number: Number(process.env.PR_NUMBER) };
             const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
             const comments = await fetchAll(github.rest.issues.listComments, pr);
-            const last = comments[comments.length - 1];
-            if (!last) {
-              core.warning('Aucun commentaire de revue : aucune etiquette posee.');
+
+            // Chercher le DERNIER commentaire n'est pas lire son verdict. Deux
+            // raisons, et la seconde a deja produit un faux « Verdict OK » :
+            //
+            // - une etape qui echoue, ou une action qui n'a rien su poster,
+            //   laisse derriere elle un commentaire sans `VERDICT:`. C'est ce
+            //   qui s'est produit au run 36621537561, dont le commentaire ne
+            //   contient que « User github-actions[bot] does not have write
+            //   permissions » ;
+            // - une etiquette posee a la main, ou le correcteur, commentent
+            //   aussi, et passent donc devant la revue.
+            //
+            // L'action ajoute un lien vers son run a chaque commentaire qu'elle
+            // poste. On ne retient donc que le commentaire de CE run, et on
+            // refuse d'agir si le verdict n'y est pas : mieux vaut une pull
+            // request sans etiquette qu'une etiquette fausse.
+            const mine = comments.filter(c =>
+              (c.body ?? '').includes(`/actions/runs/${process.env.RUN_ID}`));
+            const body = mine.length ? (mine[mine.length - 1].body ?? '') : '';
+            const verdict = body.match(/VERDICT:\s*(OK|BLOQUANT)/)?.[1];
+            if (!verdict) {
+              core.warning(
+                `Aucun verdict de revue pour le run ${process.env.RUN_ID} `
+                + `(${comments.length} commentaire(s), ${mine.length} pour ce run) : `
+                + 'aucune etiquette posee.');
               return;
             }
-            const body = last.body ?? '';
-            const blocking = body.includes('VERDICT: BLOQUANT');
+            const blocking = verdict === 'BLOQUANT';
             const max = Number(process.env.MAX_ATTEMPTS);
             const attempts = Number(process.env.ATTEMPTS);
 

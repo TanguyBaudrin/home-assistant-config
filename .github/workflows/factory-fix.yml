@@ -45,8 +45,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  # Pour relancer la revue apres avoir pousse, voir la fin du job.
-  actions: write
 
 concurrency:
   group: factory-fix-${{ inputs.pr || github.event.pull_request.number }}
@@ -216,7 +214,6 @@ jobs:
           # numero resolu plus haut.
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
           HEAD_REF: ${{ steps.resolve.outputs.head_ref }}
-          BASE_REF: ${{ steps.resolve.outputs.base_ref }}
         with:
           script: |
             // `issues.addLabels` et `issues.removeLabel` attendent `issue_number`.
@@ -321,17 +318,17 @@ jobs:
             await github.rest.issues.addLabels({ ...pr,
               labels: [`factory/attempt-${attempts}`] });
 
-            // Le commit ci-dessus ne rededecenche PAS factory-review : il est
-            // pousse avec le GITHUB_TOKEN, et un evenement produit par ce token
-            // ne lance aucun workflow. Sans cet appel, la boucle s'arrete a la
-            // premiere correction et le compteur d'essais de la revue ne sert a
-            // rien. C'est la revue qui decide de repasser par le correcteur, et
-            // elle s'arrete d'elle-meme a MAX_ATTEMPTS.
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'factory-review.yml',
-              ref: process.env.BASE_REF,
-              inputs: { pr: String(pr.issue_number) },
-            });
-            core.info('Revue relancee par workflow_dispatch.');
+            // Aucune relance de la revue ici. Le push ci-dessus declenche bien
+            // `pull_request: synchronize` : le run 36621537561 s'est ouvert sur
+            // 5be3d1d, ce commit, et la revue y a vu le diff corrige.
+            //
+            // On avait cru le contraire, et dispatche la revue a la main
+            // (36622093227). Ce dispatch etait inutil ET casse : l'action
+            // opencode derive l'identifiant de son commentaire de
+            // `payload.issue.number`, absent d'une charge utile de dispatch, et
+            // elle n'a donc rien poste. Le verdict s'est retrouve dans les
+            // journaux, et l'etape suivante a lu l'avant-dernier commentaire
+            // comme s'il etait le verdict. Un dispatch de revue demande donc un
+            // chemin d'ecriture de commentaire qui n'existe pas encore ;
+            // il ne sera retabli que le jour ou l'action saura poster sans
+            // `payload.issue`.
