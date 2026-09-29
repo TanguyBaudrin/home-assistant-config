@@ -41,6 +41,11 @@ on:
 permissions:
   contents: read
   issues: write
+  # Lecture seule, et malgre tout insuffisante : l'API `pulls.list` n'accede
+  # qu'aux pull requests que le token peut voir. Sans cette ligne, le premier
+  # `GET /pulls` renvoie 403 "Resource not accessible by integration" et
+  # l'issue n'est jamais planifiee.
+  pull-requests: read
 
 concurrency:
   # Une seule passe a la fois par issue : deux plans croises seraient
