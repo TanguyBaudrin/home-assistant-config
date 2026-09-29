@@ -94,18 +94,16 @@ jobs:
               return;
             }
             const labels = (data.labels ?? []).map(l => l.name);
+            const skip = labels.includes(process.env.NO_REVIEW_LABEL);
             core.setOutput('pr', String(number));
             core.setOutput('title', data.title);
             core.setOutput('head_ref', data.head.ref);
             core.setOutput('base_ref', data.base.ref);
             core.setOutput('attempts',
               String(labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length));
-            core.setOutput('skip',
-              labels.includes(process.env.NO_REVIEW_LABEL) ? 'true' : 'false');
+            core.setOutput('skip', skip ? 'true' : 'false');
             core.info(`PR #${number} (${data.head.ref}).`);
-            if (core.getOutput('skip') === 'true') {
-              core.info('Etiquette ' + process.env.NO_REVIEW_LABEL + ' : revue ignoree.');
-            }
+            if (skip) core.info('Etiquette ' + process.env.NO_REVIEW_LABEL + ' : revue ignoree.');
 
       # Les variables OmniRoute ne sont pas exportees ici : elles sont deja
       # dans l'environnement du runner, injectees par son
