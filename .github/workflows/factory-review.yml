@@ -13,6 +13,17 @@ name: Factory Review
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  # Seconde voie d'entree, utilisee par factory-fix.yml apres avoir pousse ses
+  # corrections. Un push fait avec le GITHUB_TOKEN ne rededecenche aucun
+  # workflow, donc la revue doit pouvoir etre relancee explicitement, sans quoi
+  # la boucle s'arrete a la premiere correction. Elle permet aussi de relire
+  # une pull request a la main.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Numero de la pull request a relire
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,7 +36,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: factory-review-${{ github.event.pull_request.number }}
+  group: factory-review-${{ inputs.pr || github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
@@ -41,7 +52,9 @@ jobs:
     # donc tout code provenant d'un fork : les forks n'executent que le CI
     # inerte (yamllint + check_config).
     if: >-
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, ha-factory]
     timeout-minutes: 30
     steps:
@@ -50,6 +63,49 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          # Sur un pull_request, `github.ref` est deja le merge ref. Sur un
+          # dispatch il n y a pas de ref implicite : on vise donc le merge ref
+          # explicitement, sinon on relirait `main` au lieu de la pull request.
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/merge', inputs.pr) || github.ref }}
+
+      # Les deux entrees ne portent pas la meme charge utile : `pull_request`
+      # d'un cote, `inputs` de l'autre. On resout donc ici, une fois, ce dont la
+      # revue a besoin, et les etapes suivantes n'utilisent plus que ces
+      # sorties. Le controle anti-fork est refait depuis l'API : sur un dispatch,
+      # la charge utile ne contient qu'un numero, et c'est ce numero qu'il faut
+      # croire avant d'aller chercher la branche.
+      - name: Resoudre la pull request
+        id: resolve
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const number = context.eventName === 'workflow_dispatch'
+              ? Number(context.payload.inputs?.pr)
+              : context.payload.pull_request?.number;
+            if (!Number.isInteger(number) || number <= 0) {
+              await core.setFailed('Numeros de pull request introuvable dans l evenement.');
+              return;
+            }
+            const { data } = await github.rest.pulls.get({
+              owner: context.repo.owner, repo: context.repo.repo, pull_number: number,
+            });
+            if (data.head.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+              await core.setFailed('Refus : la branche de la pull request vient d un fork.');
+              return;
+            }
+            const labels = (data.labels ?? []).map(l => l.name);
+            core.setOutput('pr', String(number));
+            core.setOutput('title', data.title);
+            core.setOutput('head_ref', data.head.ref);
+            core.setOutput('base_ref', data.base.ref);
+            core.setOutput('attempts',
+              String(labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length));
+            core.setOutput('skip',
+              labels.includes(process.env.NO_REVIEW_LABEL) ? 'true' : 'false');
+            core.info(`PR #${number} (${data.head.ref}).`);
+            if (core.getOutput('skip') === 'true') {
+              core.info('Etiquette ' + process.env.NO_REVIEW_LABEL + ' : revue ignoree.');
+            }
 
       # Les variables OmniRoute ne sont pas exportees ici : elles sont deja
       # dans l'environnement du runner, injectees par son
@@ -74,19 +130,9 @@ jobs:
             echo 'FACTORY_PROMPT_EOF'
           } >> "$GITHUB_OUTPUT"
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_HEAD: ${{ github.event.pull_request.head.ref }}
-
-      - name: Verifier l'etiquette d'exclusion
-        id: guard
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const labels = (context.payload.pull_request?.labels ?? []).map(l => l.name);
-            const skip = labels.includes(process.env.NO_REVIEW_LABEL);
-            core.setOutput('skip', skip ? 'true' : 'false');
-            if (skip) core.info('Etiquette ' + process.env.NO_REVIEW_LABEL + ' : revue ignoree.');
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_TITLE: ${{ steps.resolve.outputs.title }}
+          PR_HEAD: ${{ steps.resolve.outputs.head_ref }}
 
       # L action fait `git fetch` sur la branche de la PR, avec les credentials
       # ambiants. Le checkout etant en `persist-credentials: false`, il n y en a
@@ -109,7 +155,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Revue par l'agent
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.resolve.outputs.skip != 'true'
         uses: anomalyco/opencode/github@a3b97d9090ccf4aa9ac32268486283e3131e36b4  # github-v1.2.25
         env:
           # L'action documente `use_github_token: true` comme « uses the
@@ -132,12 +178,16 @@ jobs:
           prompt: ${{ steps.prompt.outputs.value }}
 
       - name: Appliquer le verdict
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.resolve.outputs.skip != 'true'
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          ATTEMPTS: ${{ steps.resolve.outputs.attempts }}
+          BASE_REF: ${{ steps.resolve.outputs.base_ref }}
         with:
           script: |
             const pr = { owner: context.repo.owner, repo: context.repo.repo,
-                         issue_number: context.issue.number };
+                         issue_number: Number(process.env.PR_NUMBER) };
             const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
             const comments = await fetchAll(github.rest.issues.listComments, pr);
             const last = comments[comments.length - 1];
@@ -148,8 +198,7 @@ jobs:
             const body = last.body ?? '';
             const blocking = body.includes('VERDICT: BLOQUANT');
             const max = Number(process.env.MAX_ATTEMPTS);
-            const labels = (context.payload.pull_request?.labels ?? []).map(l => l.name);
-            const attempts = labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length;
+            const attempts = Number(process.env.ATTEMPTS);
 
             if (!blocking) {
               await github.rest.issues.removeLabel({ ...pr, name: process.env.NEEDS_FIX_LABEL })
@@ -182,7 +231,7 @@ jobs:
               // de base : la branche de la pull request peut porter une
               // definition plus ancienne, et le job checkout de toute facon sa
               // branche explicitement.
-              ref: context.payload.pull_request.base.repo.default_branch,
+              ref: process.env.BASE_REF,
               inputs: { pr: String(pr.issue_number) },
             });
             core.info('factory-fix declenche par workflow_dispatch.');

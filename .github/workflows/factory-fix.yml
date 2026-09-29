@@ -45,6 +45,8 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  # Pour relancer la revue apres avoir pousse, voir la fin du job.
+  actions: write
 
 concurrency:
   group: factory-fix-${{ inputs.pr || github.event.pull_request.number }}
@@ -97,6 +99,7 @@ jobs:
             const attempts = labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length;
             core.setOutput('pr', String(pr));
             core.setOutput('head_ref', data.head.ref);
+            core.setOutput('base_ref', data.base.ref);
             core.setOutput('attempts', String(attempts));
             core.info(`PR #${pr} (${data.head.ref}), ${attempts} essai(s) deja fait(s).`);
 
@@ -213,10 +216,16 @@ jobs:
           # numero resolu plus haut.
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
           HEAD_REF: ${{ steps.resolve.outputs.head_ref }}
+          BASE_REF: ${{ steps.resolve.outputs.base_ref }}
         with:
           script: |
+            // `issues.addLabels` et `issues.removeLabel` attendent `issue_number`.
+            // En passant `number` (comme le fait `context.issue`), l'appel part
+            // sans numero et revient en 404 : le `removeLabel`, masque par un
+            // `.catch`, laissait l'etiquette de depart, et l'`addLabels` de
+            // l'essai echouait en fin de job apres avoir pousse la correction.
             const pr = { owner: context.repo.owner, repo: context.repo.repo,
-                         number: Number(process.env.PR_NUMBER) };
+                         issue_number: Number(process.env.PR_NUMBER) };
             const attempts = Number('${{ steps.resolve.outputs.attempts }}') + 1;
             const run = async (cmd, args) =>
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
@@ -306,9 +315,23 @@ jobs:
               await core.setFailed('Le push a echoue.');
               return;
             }
-            // Retire l'etiquette de depart et marque l'essai : c'est ce commit
-            // qui rededclenche factory-review.yml.
+            // Retire l'etiquette de depart et marque l'essai.
             await github.rest.issues.removeLabel({ ...pr,
               name: process.env.NEEDS_FIX_LABEL }).catch(() => {});
             await github.rest.issues.addLabels({ ...pr,
               labels: [`factory/attempt-${attempts}`] });
+
+            // Le commit ci-dessus ne rededecenche PAS factory-review : il est
+            // pousse avec le GITHUB_TOKEN, et un evenement produit par ce token
+            // ne lance aucun workflow. Sans cet appel, la boucle s'arrete a la
+            // premiere correction et le compteur d'essais de la revue ne sert a
+            // rien. C'est la revue qui decide de repasser par le correcteur, et
+            // elle s'arrete d'elle-meme a MAX_ATTEMPTS.
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'factory-review.yml',
+              ref: process.env.BASE_REF,
+              inputs: { pr: String(pr.issue_number) },
+            });
+            core.info('Revue relancee par workflow_dispatch.');
