@@ -198,6 +198,7 @@ jobs:
       - name: Valider et ouvrir la pull request
         if: steps.claim.outputs.skip != 'true'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MIGRATION_ID: ${{ steps.claim.outputs.id }}
           BRANCH: ${{ steps.claim.outputs.branch }}
         uses: actions/github-script@v7
@@ -206,6 +207,24 @@ jobs:
             const fs = require('fs');
             const run = async (cmd, args) =>
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
+
+            // Le checkout est en `persist-credentials: false` : aucun credential
+            // n est ecrit dans .git/config, ce qui est voulu sur un runner
+            // self-hosted, ou rien de sensible ne doit survivre au job. Le push
+            // a donc besoin de son propre credential, fourni au seul processus
+            // `git push` via GIT_CONFIG_* : rien n est ecrit sur le disque, et
+            // le header d autorisation ne peut fuiter ni par `git remote -v` ni
+            // par le journal du runner.
+            const gitAuthEnv = () => ({
+              GIT_CONFIG_COUNT: '1',
+              GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+              GIT_CONFIG_VALUE_0: 'AUTHORIZATION: basic ' +
+                Buffer.from('x-access-token:' + process.env.GITHUB_TOKEN).toString('base64'),
+            });
+            const pushBranch = async (ref) => await exec.getExecOutput(
+              'git', ['push', '--force', 'origin', ref],
+              { ignoreReturnCode: true, env: { ...process.env, ...gitAuthEnv() } },
+            );
 
             const status = await run('git', ['status', '--porcelain']);
             core.info(status.stdout);
@@ -237,9 +256,13 @@ jobs:
             await run('git', ['branch', '-M', process.env.BRANCH]);
             // --force : la branche appartient a la factory et n'est jamais
             // editee a la main. Un re-execution remplace son contenu.
-            const push = await run('git', ['push', '--force', 'origin', process.env.BRANCH]);
+            const push = await pushBranch(process.env.BRANCH);
             core.info(push.stdout);
-            if (push.exitCode !== 0) { await core.setFailed('Push impossible.'); return; }
+            if (push.exitCode !== 0) {
+              core.info(push.stderr);
+              await core.setFailed('Push impossible.');
+              return;
+            }
 
             const report = fs.readFileSync('agent-output.log', 'utf8').slice(-8000);
             const pull = await github.rest.pulls.create({

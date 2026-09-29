@@ -45,6 +45,7 @@ jobs:
       - name: Checkout la branche de la pull request
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
@@ -154,11 +155,31 @@ jobs:
 
       - name: Verifier et pousser les corrections
         uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           script: |
             const attempts = Number('${{ steps.guard.outputs.attempts }}') + 1;
             const run = async (cmd, args) =>
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
+
+            // Le checkout est en `persist-credentials: false` : aucun credential
+            // n est ecrit dans .git/config, ce qui est voulu sur un runner
+            // self-hosted, ou rien de sensible ne doit survivre au job. Le push
+            // a donc besoin de son propre credential, fourni au seul processus
+            // `git push` via GIT_CONFIG_* : rien n est ecrit sur le disque, et
+            // le header d autorisation ne peut fuiter ni par `git remote -v` ni
+            // par le journal du runner.
+            const gitAuthEnv = () => ({
+              GIT_CONFIG_COUNT: '1',
+              GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+              GIT_CONFIG_VALUE_0: 'AUTHORIZATION: basic ' +
+                Buffer.from('x-access-token:' + process.env.GITHUB_TOKEN).toString('base64'),
+            });
+            const pushBranch = async (ref) => await exec.getExecOutput(
+              'git', ['push', '--force', 'origin', ref],
+              { ignoreReturnCode: true, env: { ...process.env, ...gitAuthEnv() } },
+            );
 
             // yamllint doit passer AVANT de pousser : pousser du YAML invalide
             // ferait echouer la CI, et l'agent serait rapele en boucle.
@@ -195,10 +216,10 @@ jobs:
             await run('git', ['reset', '-q', 'agent-output.log']);
             await run('git', ['commit', '-m',
               `fix: corrections de la revue automatique (essai ${attempts})`]);
-            const push = await run('git', ['push', 'origin',
-              `HEAD:${context.payload.pull_request.head.ref}`]);
+            const push = await pushBranch(`HEAD:${context.payload.pull_request.head.ref}`);
             core.info(push.stdout);
             if (push.exitCode !== 0) {
+              core.info(push.stderr);
               await core.setFailed('Le push a echoue.');
               return;
             }
