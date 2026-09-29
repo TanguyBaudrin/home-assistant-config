@@ -124,6 +124,11 @@ jobs:
             # --target fait `from yamllint.cli import run` et ne trouve pas les
             # paquets installes a cote de lui sans ca.
             export PYTHONPATH="$TARGET"
+            # Les deux exports servent aussi dans CETTE etape : GITHUB_PATH et
+            # GITHUB_ENV ne valent que pour les etapes suivantes, or le script
+            # se verifie juste apres. Sans cet export, `command -v yamllint`
+            # echoue silencieusement a la premiere installation.
+            export PATH="$TARGET/bin:$PATH"
             echo "PYTHONPATH=$TARGET" >> "$GITHUB_ENV"
             echo "$TARGET/bin" >> "$GITHUB_PATH"
           else
