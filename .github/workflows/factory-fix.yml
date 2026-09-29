@@ -9,8 +9,8 @@
 # produit ainsi par la revue n'est donc jamais delivre, et ce workflow ne
 # demarre que si un humain ajoute l'etiquette a la main.
 #
-# D'ou le second declencheur : la revue emet en plus un `repository_dispatch`,
-# qui lui est bien delivre. Les deux voies aboutissent au meme job.
+# D'ou le second declencheur : la revue declenche un `workflow_dispatch`, qui
+# lui est bien delivre. Les deux voies aboutissent au meme job.
 #
 # Pourquoi la CLI et pas l'action opencode : l'entree `agent:` de l'action est
 # inoperante dans la CLI publiee (elle ne lit jamais la variable AGENT), et
@@ -27,8 +27,19 @@ name: Factory Fix
 on:
   pull_request:
     types: [labeled]
-  repository_dispatch:
-    types: [factory-fix]
+  # Deuxieme voie d'entree, et c'est elle qu'utilise la revue. Ni
+  # `pull_request: labeled` ni `workflow_run` ne conviennent : un evenement
+  # produit par le GITHUB_TOKEN ne declenche pas de run, sauf
+  # `workflow_dispatch` et `repository_dispatch`. Entre les deux, on retient
+  # `workflow_dispatch` : `repository_dispatch` exige `contents: write`, donc
+  # un droit d'ecriture sur le code, alors que `actions: write` suffit et ne
+  # donne au job que le pouvoir de piloter les workflows.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Numero de la pull request a corriger
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -36,7 +47,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: factory-fix-${{ github.event.client_payload.pr || github.event.pull_request.number }}
+  group: factory-fix-${{ inputs.pr || github.event.pull_request.number }}
   cancel-in-progress: false
 
 env:
@@ -49,27 +60,27 @@ jobs:
   fix:
     name: Correction
     # Sur l'etiquette, on refuse les forks comme sur les autres workflows. Sur le
-    # dispatch, la charge utile ne porte qu'un numero : le controle de la branche
-    # est fait plus bas, depuis l'API, une fois le numero resolu.
+    # dispatch, l'entree ne porte qu'un numero : le controle de la branche est
+    # fait plus bas, depuis l'API, une fois le numero resolu.
     if: >-
       (github.event_name == 'pull_request' &&
        github.event.label.name == 'factory/needs-fix' &&
        github.event.pull_request.head.repo.full_name == github.repository) ||
-      github.event_name == 'repository_dispatch'
+      github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, ha-factory]
     timeout-minutes: 45
     steps:
       # Les deux declencheurs ne portent pas la meme charge utile : l'un a
-      # `pull_request`, l'autre `client_payload`. On resout donc ici, une fois,
-      # le numero, la branche et le nombre d'essais, et les etapes suivantes
+      # `pull_request`, l'autre `inputs`. On resout donc ici, une fois, le
+      # numero, la branche et le nombre d'essais, et les etapes suivantes
       # n'utilisent plus que ces sorties.
       - name: Resoudre la pull request et ses essais
         id: resolve
         uses: actions/github-script@v7
         with:
           script: |
-            const pr = context.eventName === 'repository_dispatch'
-              ? Number(context.payload.client_payload?.pr)
+            const pr = context.eventName === 'workflow_dispatch'
+              ? Number(context.payload.inputs?.pr)
               : context.payload.pull_request?.number;
             if (!Number.isInteger(pr) || pr <= 0) {
               await core.setFailed('Numeros de pull request introuvable dans l evenement.');
@@ -197,7 +208,7 @@ jobs:
         uses: actions/github-script@v7
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          # `context.issue` vaut le numero du depot sur un repository_dispatch,
+          # `context.issue` vaut le numero du depot sur un workflow_dispatch,
           # pas celui de la pull request : on cible donc les etiquettes par le
           # numero resolu plus haut.
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}

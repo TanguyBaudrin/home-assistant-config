@@ -18,6 +18,11 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  # Uniquement pour `createWorkflowDispatch`, qui declenche le correcteur.
+  # `repository_dispatch` ferait le meme office mais exige `contents: write` :
+  # on ne donne pas un droit d'ecriture sur le code au job le plus expose du
+  # runner auto-heberge, qui porte HASS_TOKEN.
+  actions: write
 
 concurrency:
   group: factory-review-${{ github.event.pull_request.number }}
@@ -166,16 +171,18 @@ jobs:
             // repository_dispatch. Le `pull_request: labeled` ne sera donc
             // jamais delivre, et l'etiquette seule ne declenche rien.
             //
-            // On emet donc en plus un repository_dispatch, qui est bien delivre.
+            // On declenche donc en plus factory-fix par workflow_dispatch.
             // L'etiquette reste posee pour la visibilite humaine et pour le
             // compte des essais.
-            await github.rest.repos.createDispatchEvent({
+            await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              event_type: 'factory-fix',
-              client_payload: {
-                pr: String(pr.issue_number),
-                review_run: String(process.env.GITHUB_RUN_ID),
-              },
+              workflow_id: 'factory-fix.yml',
+              // La version du workflow qui s'execute est celle de la branche
+              // de base : la branche de la pull request peut porter une
+              // definition plus ancienne, et le job checkout de toute facon sa
+              // branche explicitement.
+              ref: context.payload.pull_request.base.repo.default_branch,
+              inputs: { pr: String(pr.issue_number) },
             });
-            core.info('Dispatch factory-fix emis.');
+            core.info('factory-fix declenche par workflow_dispatch.');
