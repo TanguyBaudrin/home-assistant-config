@@ -13,9 +13,13 @@ touchent au code des workflows :
    stderr }. Lire `.output` donne `undefined` et provoque un TypeError au
    moment ou l on fait `.trim()`. La propriete s appelait `output` dans quatre
    workflows, jamais execute jusqu au premier build reel.
+
+3. Frontmatter des agents opencode : une valeur refusee par le schema invalide
+   la configuration du depot entier et plus aucune commande opencode ne demarre.
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import re
 import subprocess
@@ -23,6 +27,16 @@ import sys
 import tempfile
 
 import yaml
+
+# Palette acceptee par le schema d opencode pour le champ `color` d un agent,
+# en plus d une couleur hexadecimale. Voir AGENT_COLORS plus bas.
+AGENT_COLORS = (
+    "primary", "secondary", "accent", "success", "warning", "error", "info",
+)
+
+# Agent nomme par un workflow, soit dans une invocation de CLI, soit dans un
+# appel a l action opencode.
+AGENT_REFERENCE = re.compile(r"--agent[= ]+([\w-]+)")
 
 # Lecture d une propriete inexistante sur le retour de getExecOutput.
 # `getExecOutput` renvoie {exitCode, stdout, stderr}. Deux fautes se paient cher
@@ -142,6 +156,82 @@ def check_guarded_commit(workflow: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_agents(agents_dir: pathlib.Path) -> list[str]:
+    """Verifie le frontmatter de chaque agent, et que le nom existe la ou on l'appelle.
+
+    Le schema d opencode n autorise qu une palette nommee, ou une couleur
+    hexadecimale. Un nom hors palette, `cyan` par exemple, invalide la
+    configuration **du depot entier** : plus aucune commande opencode ne
+    demarre, donc la revue, la construction, la correction et la
+    specification tombent d un coup. C est ce que le premier run de
+    factory-spec a montre, et le nom du fichier ne dit rien du sous-agent
+    concerne.
+
+    On verifie aussi que chaque nom appele par un workflow existe. Un agent
+    renomme laisse `--agent factory-spec` echouer sur le runner, apres le
+    checkout, l installation de la CLI et la construction du prompt.
+    """
+    failures: list[str] = []
+    known: set[str] = set()
+
+    for path in sorted(agents_dir.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        match = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+        if not match:
+            failures.append(f"{path}: pas de frontmatter YAML delimite par ---")
+            continue
+        known.add(path.stem)
+        try:
+            meta = yaml.safe_load(match.group(1)) or {}
+        except yaml.YAMLError as exc:
+            failures.append(f"{path}: frontmatter illisible ({exc})")
+            continue
+        if not isinstance(meta, dict):
+            failures.append(f"{path}: frontmatter pas une table")
+            continue
+        if not str(meta.get("description") or "").strip():
+            failures.append(f"{path}: description vide, l agent n est pas listable")
+        colour = meta.get("color")
+        if colour is not None and not re.fullmatch(
+            r"#[0-9a-fA-F]{6}", str(colour)
+        ) and colour not in AGENT_COLORS:
+            failures.append(
+                f"{path}: color={colour!r} hors palette "
+                f"({' | '.join(AGENT_COLORS)} ou #rrggbb)"
+            )
+        permissions = meta.get("permission")
+        if permissions is not None and not isinstance(permissions, dict):
+            failures.append(f"{path}: permission doit etre une table d outils")
+
+    if not known:
+        return failures + [f"Aucun agent trouve dans {agents_dir}"]
+
+    root = agents_dir.parent.parent
+    config = root / "opencode.json"
+    if config.exists():
+        try:
+            default = (json.loads(config.read_text(encoding="utf-8"))
+                       .get("default_agent"))
+        except json.JSONDecodeError as exc:
+            failures.append(f"{config}: illisible ({exc})")
+            default = None
+        if default and default not in known:
+            failures.append(
+                f"{config}: default_agent={default!r} n existe pas "
+                f"(agents: {', '.join(sorted(known))})"
+            )
+
+    for workflow in sorted((root / ".github/workflows").glob("*.yml")):
+        text = workflow.read_text(encoding="utf-8")
+        for name in AGENT_REFERENCE.findall(text):
+            if name not in known:
+                failures.append(
+                    f"{workflow}: appelle l'agent {name!r}, absent de "
+                    f"{agents_dir} (agents: {', '.join(sorted(known))})"
+                )
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -153,17 +243,24 @@ def main(argv: list[str]) -> int:
     api = [f for w in workflows for f in check_exec_api(w)]
     order = [f for w in workflows for f in check_commit_order(w)]
     guarded = [f for w in workflows for f in check_guarded_commit(w)]
+    repo_root = pathlib.Path.cwd()
+    agents = check_agents(repo_root / ".opencode/agents")
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api or order or guarded:
+    if shell or api or order or guarded or agents:
+        for line in shell + api + order + guarded + agents:
+            print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
             f"{len(api)} appel(s) exec invalide(s), "
             f"{len(order)} ordre(s) de commit invalide(s), "
-            f"{len(guarded)} commit(s) non garde(s)"
+            f"{len(guarded)} commit(s) non garde(s), "
+            f"{len(agents)} agent(s) invalide(s)",
+            file=sys.stderr,
         )
         return 1
     print(f"  ok   {total} blocs inlines : shell, API exec et commits valides")
+    print("  ok   agents opencode : frontmatter dans la palette, noms resolus")
     return 0
 
 

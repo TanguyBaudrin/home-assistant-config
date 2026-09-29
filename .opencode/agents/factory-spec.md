@@ -2,7 +2,7 @@
 description: Redige le plan d'implementation d'une issue Home Assistant et le publie en commentaire, sans jamais modifier le depot
 mode: all
 temperature: 0.1
-color: cyan
+color: secondary
 permission:
   read: allow
   glob: allow
