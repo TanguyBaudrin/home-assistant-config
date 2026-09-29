@@ -16,6 +16,10 @@ on:
   workflow_dispatch:
 
 permissions:
+  # `contents: read` est obligatoire : un bloc `permissions:` remplace tous les
+  # droits, il ne les ajoute pas. Sans lui, `actions/checkout` se fait refuser
+  # par GitHub avec un trompeur "Repository not found" sur un depot prive.
+  contents: read
   issues: write
 
 jobs:
