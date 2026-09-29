@@ -2,6 +2,16 @@
 #
 # Declenche par l'etiquette `factory/needs-fix` posee par factory-review.yml.
 #
+# L'etiquette seule ne declenche RIEN : la revue la pose via
+# `actions/github-script`, donc avec le GITHUB_TOKEN du depot. Or GitHub ignore
+# les evenements emis par le GITHUB_TOKEN, a deux exceptions pres :
+# `workflow_dispatch` et `repository_dispatch`. Un `pull_request: labeled`
+# produit ainsi par la revue n'est donc jamais delivre, et ce workflow ne
+# demarre que si un humain ajoute l'etiquette a la main.
+#
+# D'ou le second declencheur : la revue emet en plus un `repository_dispatch`,
+# qui lui est bien delivre. Les deux voies aboutissent au meme job.
+#
 # Pourquoi la CLI et pas l'action opencode : l'entree `agent:` de l'action est
 # inoperante dans la CLI publiee (elle ne lit jamais la variable AGENT), et
 # `default_agent` ne peut prendre qu'une seule valeur par depot. Comme le
@@ -17,6 +27,8 @@ name: Factory Fix
 on:
   pull_request:
     types: [labeled]
+  repository_dispatch:
+    types: [factory-fix]
 
 permissions:
   contents: write
@@ -24,7 +36,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: factory-fix-${{ github.event.pull_request.number }}
+  group: factory-fix-${{ github.event.client_payload.pr || github.event.pull_request.number }}
   cancel-in-progress: false
 
 env:
@@ -36,27 +48,53 @@ env:
 jobs:
   fix:
     name: Correction
+    # Sur l'etiquette, on refuse les forks comme sur les autres workflows. Sur le
+    # dispatch, la charge utile ne porte qu'un numero : le controle de la branche
+    # est fait plus bas, depuis l'API, une fois le numero resolu.
     if: >-
-      github.event.label.name == 'factory/needs-fix' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'pull_request' &&
+       github.event.label.name == 'factory/needs-fix' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      github.event_name == 'repository_dispatch'
     runs-on: [self-hosted, ha-factory]
     timeout-minutes: 45
     steps:
+      # Les deux declencheurs ne portent pas la meme charge utile : l'un a
+      # `pull_request`, l'autre `client_payload`. On resout donc ici, une fois,
+      # le numero, la branche et le nombre d'essais, et les etapes suivantes
+      # n'utilisent plus que ces sorties.
+      - name: Resoudre la pull request et ses essais
+        id: resolve
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.eventName === 'repository_dispatch'
+              ? Number(context.payload.client_payload?.pr)
+              : context.payload.pull_request?.number;
+            if (!Number.isInteger(pr) || pr <= 0) {
+              await core.setFailed('Numeros de pull request introuvable dans l evenement.');
+              return;
+            }
+            const { data } = await github.rest.pulls.get({
+              owner: context.repo.owner, repo: context.repo.repo, pull_number: pr,
+            });
+            if (data.head.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+              await core.setFailed('Refus : la branche de la pull request vient d un fork.');
+              return;
+            }
+            const labels = (data.labels ?? []).map(l => l.name);
+            const attempts = labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length;
+            core.setOutput('pr', String(pr));
+            core.setOutput('head_ref', data.head.ref);
+            core.setOutput('attempts', String(attempts));
+            core.info(`PR #${pr} (${data.head.ref}), ${attempts} essai(s) deja fait(s).`);
+
       - name: Checkout la branche de la pull request
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ steps.resolve.outputs.head_ref }}
           fetch-depth: 0
-
-      - name: Verifier l'etiquette
-        id: guard
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const labels = (context.payload.pull_request?.labels ?? []).map(l => l.name);
-            const attempts = labels.filter(l => /^factory\/attempt-\d+$/.test(l)).length;
-            core.setOutput('attempts', String(attempts));
 
       - name: Preparer le prompt de correction
         id: prompt
@@ -64,7 +102,7 @@ jobs:
         with:
           script: |
             const pr = { owner: context.repo.owner, repo: context.repo.repo,
-                         issue_number: context.issue.number };
+                         issue_number: Number(process.env.PR_NUMBER) };
             const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
             const comments = await fetchAll(github.rest.issues.listComments, pr);
             const last = comments[comments.length - 1];
@@ -78,6 +116,8 @@ jobs:
             // recu par l agent ne correspondrait plus au commentaire publie.
             const value = template.replace('{{REVIEW_BODY}}', () => last.body ?? '');
             core.setOutput('body', value);
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
 
       - name: Installer opencode
         id: install
@@ -157,9 +197,16 @@ jobs:
         uses: actions/github-script@v7
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # `context.issue` vaut le numero du depot sur un repository_dispatch,
+          # pas celui de la pull request : on cible donc les etiquettes par le
+          # numero resolu plus haut.
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          HEAD_REF: ${{ steps.resolve.outputs.head_ref }}
         with:
           script: |
-            const attempts = Number('${{ steps.guard.outputs.attempts }}') + 1;
+            const pr = { owner: context.repo.owner, repo: context.repo.repo,
+                         number: Number(process.env.PR_NUMBER) };
+            const attempts = Number('${{ steps.resolve.outputs.attempts }}') + 1;
             const run = async (cmd, args) =>
               await exec.getExecOutput(cmd, args, { ignoreReturnCode: true });
 
@@ -227,7 +274,7 @@ jobs:
               .filter(p => p && !HARNESS.includes(p));
             if (!changed.length) {
               core.warning('Aucune modification : point non corrigeable, escalade.');
-              await github.rest.issues.addLabels({ ...context.issue,
+              await github.rest.issues.addLabels({ ...pr,
                 labels: [`factory/attempt-${attempts}`, 'factory/escalade'] });
               return;
             }
@@ -241,7 +288,7 @@ jobs:
             if (!await must(gitAs('commit', '-m',
               `fix: corrections de la revue automatique (essai ${attempts})`),
               'Le commit a echoue.')) { return; }
-            const push = await pushBranch(`HEAD:${context.payload.pull_request.head.ref}`);
+            const push = await pushBranch(`HEAD:${process.env.HEAD_REF}`);
             core.info(push.stdout);
             if (push.exitCode !== 0) {
               core.info(push.stderr);
@@ -250,7 +297,7 @@ jobs:
             }
             // Retire l'etiquette de depart et marque l'essai : c'est ce commit
             // qui rededclenche factory-review.yml.
-            await github.rest.issues.removeLabel({ ...context.issue,
+            await github.rest.issues.removeLabel({ ...pr,
               name: process.env.NEEDS_FIX_LABEL }).catch(() => {});
-            await github.rest.issues.addLabels({ ...context.issue,
+            await github.rest.issues.addLabels({ ...pr,
               labels: [`factory/attempt-${attempts}`] });

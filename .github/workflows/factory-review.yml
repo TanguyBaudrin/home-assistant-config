@@ -159,3 +159,23 @@ jobs:
             }
             await github.rest.issues.addLabels({ ...pr, labels: [process.env.NEEDS_FIX_LABEL] });
             core.info(`Etiquette ${process.env.NEEDS_FIX_LABEL} posee.`);
+
+            // Poser l'etiquette ne suffit pas a demarrer factory-fix : cette
+            // etape tourne avec le GITHUB_TOKEN du depot, et GitHub ignore les
+            // evenements qu'il emet, sauf workflow_dispatch et
+            // repository_dispatch. Le `pull_request: labeled` ne sera donc
+            // jamais delivre, et l'etiquette seule ne declenche rien.
+            //
+            // On emet donc en plus un repository_dispatch, qui est bien delivre.
+            // L'etiquette reste posee pour la visibilite humaine et pour le
+            // compte des essais.
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event_type: 'factory-fix',
+              client_payload: {
+                pr: String(pr.issue_number),
+                review_run: String(process.env.GITHUB_RUN_ID),
+              },
+            });
+            core.info('Dispatch factory-fix emis.');
