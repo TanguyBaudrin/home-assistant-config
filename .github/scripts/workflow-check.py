@@ -58,6 +58,15 @@ EXEC_RESULT_PROPS = re.compile(
 )
 EXEC_PROPS = ("exitCode", "stdout", "stderr")
 
+# Les sept expressions que GitHub reconnait pour fermer une issue au merge,
+# insensibles a la casse et en anglais uniquement. Volontairement ecrites
+# comme la documentation de GitHub : `Cloture #12` n'en fait pas partie et ne
+# ferme rien. Le numero est ecrit `$` quand il vient d'une expression de
+# gabarit (`#${...}`) plutot que litteral.
+CLOSING_KEYWORD = re.compile(
+    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(?:\d|\$)", re.IGNORECASE
+)
+
 
 def inline_scripts(path: pathlib.Path) -> list[tuple[str, str, str, str]]:
     """Renvoie (genre, job, etape, code) pour chaque bloc run ou script inline.
@@ -595,6 +604,49 @@ def check_inline_js(workflow: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_issue_closure(workflow: pathlib.Path) -> list[str]:
+    """Verifie qu'une pull request issue d'un issue la referme vraiment.
+
+    GitHub ne reconnait que sept mots de fermeture, en anglais, insensibles a la
+    casse : close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved.
+    Le reste n'est pas « presque reconnu », il n'a aucun effet — sans erreur,
+    sans avertissement, et sans trace dans le journal de la pull request.
+
+    C'est exactement ce que faisait `Cloture #12` dans factory-build.yml depuis
+    le premier commit de la factory. Rien n'indiquait que l'issue ne se
+    fermait pas : la ligne etait la, dans le corps de la pull request, et le
+    defaut ne se remarque qu'au moment de la merger, sans plus aucun moyen de
+    rattacher l'issue a son plan.
+
+    Le controle porte sur le lien entre les deux marqueurs plutot que sur une
+    chaine recherchee a un endroit fixe. Le marqueur `<!-- issue N -->` est ce
+    qui relie une pull request a son issue : c'est lui que la deduplication
+    relit au demarrage d'un nouveau build. Ou une pull request est reellement
+    ouverte et que son corps cite le numero de l'issue, une vraie expression de
+    fermeture doit l'accompagner.
+
+    Le perimetre est volontairement etroit : seules les etapes qui appellent
+    `pulls.create` sont concernees. `factory-spec.yml` contient le marqueur
+    lui aussi, mais pour le RELIRE afin de ne pas redemarrer un plan deja
+    traite — pas pour ouvrir quoi que ce soit. Et `factory-migrate.yml` et
+    `factory-docs.yml` ouvrent bien des pull requests, sans issue associatee :
+    il n'y a rien a y fermer.
+    """
+    failures: list[str] = []
+    for kind, job, label, code in inline_scripts(workflow):
+        if kind != "js" or "pulls.create" not in code:
+            continue
+        if "ISSUE_NUMBER" not in code or CLOSING_KEYWORD.search(code):
+            continue
+        failures.append(
+            f"{workflow.name}: {label}: la pull request cite le numero de "
+            "l'issue mais ne contient aucune expression de fermeture. "
+            "L'issue restera ouverte au merge, sans le signaler. "
+            "Utiliser `Close #N` en anglais, pas une traduction."
+        )
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -613,13 +665,15 @@ def main(argv: list[str]) -> int:
     prompts = check_prompt_placeholders(repo_root)
     invocations = check_agent_invocations(repo_root)
     human_review = check_human_review_trigger(repo_root)
+    closure = [f for w in workflows for f in check_issue_closure(w)]
     inline_js = [f for w in workflows for f in check_inline_js(w)]
 
     total = sum(len(inline_scripts(w)) for w in workflows)
     if (shell or api or shadowed or order or guarded or agents or models
-            or prompts or invocations or human_review or inline_js):
+            or prompts or invocations or human_review or inline_js or closure):
         for line in (shell + api + shadowed + order + guarded + agents + models
-                     + prompts + invocations + human_review + inline_js):
+                     + prompts + invocations + human_review + inline_js
+                     + closure):
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
@@ -632,7 +686,8 @@ def main(argv: list[str]) -> int:
             f"{len(prompts)} placeholder(s) de prompt non alimente(s), "
             f"{len(invocations)} invocation(s) d'agent invalide(s), "
             f"{len(human_review)} declencheur(s) de revue humaine invalide(s), "
-            f"{len(inline_js)} bloc(s) JS invalide(s)",
+            f"{len(inline_js)} bloc(s) JS invalide(s), "
+            f"{len(closure)} PR(s) sans expression de fermeture",
             file=sys.stderr,
         )
         return 1

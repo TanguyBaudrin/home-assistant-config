@@ -467,7 +467,12 @@ jobs:
               base: context.payload.repository.default_branch,
               title: `${process.env.ISSUE_TITLE} (#${process.env.ISSUE_NUMBER})`,
               body: [
-                `Cloture #${process.env.ISSUE_NUMBER}`,
+                // `Close` est le seul mot que GitHub reconnait, et en anglais
+                // seulement : `Cloture #12` ou `Fermer #12` ne ferment rien,
+                // sans erreur ni avertissement. L'issue resterait ouverte sans
+                // que rien ne le signale. Cette ligne est donc en anglais dans
+                // un corps par ailleurs en francais : ne pas la traduire.
+                `Close #${process.env.ISSUE_NUMBER}`,
                 '',
                 '<!-- issue ' + process.env.ISSUE_NUMBER + ' -->',
                 '',

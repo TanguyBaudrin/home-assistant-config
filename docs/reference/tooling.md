@@ -164,6 +164,14 @@ prompt states which one wins: **the plan**. An issue title is a draft written
 before the need was understood, and nobody rereads it; the plan is the part that
 was corrected and approved.
 
+The pull request body opens with `Close #N`, so merging it closes the issue.
+The wording is English on purpose: `close`, `fix` and `resolve` are the only
+words GitHub recognises, in English only, and there is no error and no warning
+when it ignores something else. `Cloture #N` sat in that spot from the first
+commit of the factory and did nothing at all — the failure is invisible, which
+is why `check_issue_closure` now fails the build when a pull request cites an
+issue number without a closing keyword.
+
 Issue #3 showed the cost of not doing this. The plan revised "garage" to "salon"
 window and dropped a door condition, and the human said so in a comment. The
 build, receiving only the title, wrote `automations/garage/door.yaml` — a garage
