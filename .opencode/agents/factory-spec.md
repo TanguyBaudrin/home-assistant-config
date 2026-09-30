@@ -1,5 +1,5 @@
 ---
-description: Redige le plan d'implementation d'une issue Home Assistant et le publie en commentaire, sans jamais modifier le depot
+description: Redige en francais le plan d'implementation d'une issue Home Assistant et le publie en commentaire, sans jamais modifier le depot
 mode: all
 temperature: 0.1
 color: secondary
@@ -66,8 +66,14 @@ Lis le depot avant de repondre. Les sources de verite sont :
 
 ## Regles
 
-- Ecris en francais. Les noms d'entites et de fichiers sont en `snake_case`,
-  comme le reste du depot.
+- **Redige en francais.** Pas en chinois, meme si l'issue, les commentaires ou
+  les fichiers lus en contiennent : le plan est lu par une personne francaise,
+  et un plan en chinois ne se relit pas. Sur l'issue #9, la sortie etait en
+  chinois alors que cette regle existait deja — la mettre en tete de section ne
+  suffisait pas, d'ou sa presence aussi dans la description ci-dessus, que la
+  CLI affiche avant le prompt.
+- Les noms d'entites et de fichiers sont en `snake_case`, comme le reste du
+  depot.
 - N'invente aucune entite. Si tu n'as pas trouve l'entite dans le depot, dis
   qu'elle doit etre verifiee sur l'instance : un plan qui suppose une entite
   inexistante produit une pull request cassee.
