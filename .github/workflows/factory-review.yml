@@ -244,16 +244,36 @@ jobs:
       # le choix se fait par `--agent`. `GITHUB_TOKEN` n'est pas passe a
       # l'agent : le relecteur n'a aucune permission d'ecriture, et il n'a pas
       # a appeler l'API. Il rend sa revue sur sa sortie standard.
+      # Le retry est ici pour la meme raison que dans factory-spec.yml : l'agent
+      # est en lecture seule, il ne modifie rien, donc le repeter ne peut pas
+      # doubler un effet. Ce n'est pas vrai du correcteur, qui ecrit et commite.
+      # Le run 36673610734 a echoue sur « Service temporarily unavailable due to
+      # resource pressure » alors que l'agent avait deja lu ses fichiers de
+      # reference : une panne de fournisseur, pas un probleme de revue, et elle
+      # ne justifiait pas un run rouge.
       - name: Revue par l'agent
         if: steps.resolve.outputs.skip != 'true'
         env:
           PROMPT_BODY: ${{ steps.prompt.outputs.value }}
+          AGENT_ATTEMPTS: "3"
         run: |
           set -euo pipefail
-          ~/.opencode/bin/opencode run \
-            --agent factory-review \
-            --model omniroute/agnes/agnes-2.5-flash \
-            "$PROMPT_BODY" 2>&1 | tee agent-output.log
+          for attempt in $(seq 1 "$AGENT_ATTEMPTS"); do
+            # pipefail est indispensable : sans lui, `| tee` renvoie le statut
+            # de tee et l'etape passe au vert meme si l'agent a echoue.
+            if ~/.opencode/bin/opencode run \
+                 --agent factory-review \
+                 --model omniroute/agnes/agnes-2.5-flash \
+                 "$PROMPT_BODY" 2>&1 | tee agent-output.log; then
+              exit 0
+            fi
+            echo "::warning::La revue a echoue (essai ${attempt}/${AGENT_ATTEMPTS})."
+            if [ "$attempt" -lt "$AGENT_ATTEMPTS" ]; then
+              sleep $((attempt * 20))
+            fi
+          done
+          echo "::error::La revue a echoue ${AGENT_ATTEMPTS} fois de suite."
+          exit 1
 
       # L'action posait elle-meme le commentaire. La CLI ne le fait pas : c'est
       # cette etape qui publie la sortie de l'agent, et qui y ajoute le lien
