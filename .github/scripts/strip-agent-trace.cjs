@@ -35,13 +35,14 @@ const TOOL = /\b(?:Read|Write|Edit|Glob|Grep|List|Bash|WebFetch|Task)\b/;
 // correspondances.
 const DANGLING = /·\s*\d+\s+matches?\s*$/;
 
-// Un tool call refuse par les permissions de l'agent laisse une trace au milieu
-// du bloc, pas seulement en tete. Ce n'est pas une coupure de ligne mais un
-// refus de la CLI, qui n'a pas arrete l'agent : sur l'issue #9, un `Read` hors
-// perimetre a produit une ligne `Error:` suivie du JSON des permissions, au
-// milieu de ce qui devait etre un plan lisible. La CLI ecrit ce refus sur une
-// seule ligne — le JSON y est inline — donc le motif se suffit a lui-meme.
-const TOOL_ERROR = /^\s*(?:\^)?Error:\s*The user has specified a rule/;
+// Un tool call que la CLI refuse ou ne trouve pas laisse une trace `Error:`
+// au milieu du bloc, pas seulement en tete. Ce n'est pas une coupure de ligne
+// mais un refus ou un echec de la CLI, qui n'a pas arrete l'agent : sur l'issue
+// #9, un `Read` hors perimetre a produit une ligne `Error:` suivie du JSON des
+// permissions, et un `Read` de fichier inexistant une ligne `Error: File not
+// found:`. L'agent a continue dans les deux cas et a rendu un plan. Un rapport
+// ne commence pas par `Error:`, donc le motif se suffit a lui-meme.
+const TOOL_ERROR = /^\s*(?:\^)?Error:\s/;
 
 // Retourne le rapport seul : ni trace, ni refus d'outil, ni codes
 // d'echappement, ni lignes vides en tete. Renvoie une chaine vide si la sortie

@@ -99,6 +99,19 @@ const cases = [
     expect: "## Plan\n\n**Termine.**",
   },
   {
+    // Autre variante reelle sur l'issue #9 : un `Read` de fichier inexistant
+    // laisse `Error: File not found:`, l'agent continue et rend son plan.
+    name: "un fichier introuvable laisse une trace retiree",
+    raw: [
+      "Error: File not found: /opt/actions-runner/_work/x/secrets.yaml",
+      "\u2192 Read .ci/secrets.yaml",
+      "## Plan",
+      "",
+      "**Termine.**",
+    ].join("\n"),
+    expect: "## Plan\n\n**Termine.**",
+  },
+  {
     name: "une sortie vide ne produit rien",
     raw: "",
     expect: "",
