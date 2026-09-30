@@ -114,16 +114,6 @@
     target:
       entity_id: climate.sejour
     action: climate.set_preset_mode
-  - if:
-    - condition: state
-      entity_id: alarm_control_panel.aarlo_location_home
-      state: armed_away
-    then:
-    - data: {}
-      target:
-        device_id: 9243b1e92ae159a2e333ccf8988a65ed
-      action: alarm_control_panel.alarm_arm_home
-    alias: Mettre Arlo en mode présent s’il était en mode absent
   - alias: Envoyer notifications de machine à laver/sèche linge terminé
     choose:
     - conditions:

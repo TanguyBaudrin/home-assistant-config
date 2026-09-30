@@ -1,94 +1,70 @@
-# Dette connue : cette description tient sur une seule ligne de plus de
-# 160 caracteres. Le retour a la ligne ajouterait des sauts de ligne dans
-# le texte affiche par Home Assistant, donc la correction est differee.
-# yamllint disable rule:line-length
-
-- id: '1699818890314'
-  alias: Tech - Alarme - Gestion dynamique des modes Arlo
+- id: 'auto_tech_alarme_gestion_modes_arlo'
+  alias: Tech - Alarme - Modes Arlo selon présence
   description: |
-    Cette automatisation ajuste automatiquement le mode du système Arlo (présent, nuit ou absent) selon l'heure, la position du soleil et la présence d’occupants. Déclencheurs : lever/coucher du soleil, horaires personnalisés et arrivées/départs à la maison. Actions : arme l’alarme en mode "home", "night" ou "away" selon la logique. (Migré le 2026-01-25)
+    Cette automatisation ajuste le mode du système Arlo (présent, nuit ou absent) en fonction
+    de la présence globale des occupants et de la période jour/nuit. Déclencheurs : coucher du
+    soleil, 22h, et changements d'état des personnes. Actions : arme en mode "home" quand au
+    moins une personne est là et c'est le jour, en mode "night" quand au moins une personne
+    est là et c'est la nuit, et en mode "away" quand tout le monde est parti. (Modifié le
+    2026-09-30)
   trigger:
-    - platform: sun
-      event: sunrise
-      id: soleil_se_leve
-    - platform: time
-      at: input_datetime.heure_de_reveil_de_la_maison
-      id: heure_de_reveil
     - platform: sun
       event: sunset
       id: soleil_se_couche
     - platform: time
       at: '22:00:00'
       id: heure_de_coucher
-    - platform: zone
+    - platform: state
       entity_id: person.agnes
-      zone: zone.home
-      event: enter
-      id: agnes_rentre
-    - platform: zone
+      id: agnes_state
+    - platform: state
       entity_id: person.tanguy_baudrin
-      zone: zone.home
-      event: enter
-      id: tanguy_rentre
-    - platform: zone
-      entity_id: person.agnes
-      zone: zone.home
-      event: leave
-      id: agnes_quitte
-    - platform: zone
-      entity_id: person.tanguy_baudrin
-      zone: zone.home
-      event: leave
-      id: tanguy_quitte
+      id: tanguy_state
   condition: []
   action:
     - choose:
-        - alias: Mode "présent" le matin ou si quelqu’un rentre
+        - alias: Mode "absent" quand tout le monde est parti
+          conditions:
+            - condition: state
+              entity_id: person.agnes
+              state: not_home
+            - condition: state
+              entity_id: person.tanguy_baudrin
+              state: not_home
+          sequence:
+            - service: alarm_control_panel.alarm_arm_away
+              target:
+                device_id: c83b0003189dab2a3fa137b4e527d448
+        - alias: Mode "présent" le jour si au moins une personne est là
           conditions:
             - condition: or
               conditions:
-                - condition: zone
+                - condition: state
                   entity_id: person.agnes
-                  zone: zone.home
-                - condition: zone
+                  state: home
+                - condition: state
                   entity_id: person.tanguy_baudrin
-                  zone: zone.home
-            - condition: or
-              conditions:
-                - condition: and
-                  conditions:
-                    - condition: trigger
-                      id: soleil_se_leve
-                    - condition: time
-                      after: input_datetime.heure_de_reveil_de_la_maison
-                - condition: and
-                  conditions:
-                    - condition: trigger
-                      id: heure_de_reveil
-                    - condition: sun
-                      after: sunrise
-                - condition: trigger
-                  id:
-                    - agnes_rentre
-                    - tanguy_rentre
+                  state: home
+            - condition: state
+              entity_id: binary_sensor.mode_jour
+              state: "on"
           sequence:
             - service: alarm_control_panel.alarm_arm_home
               target:
                 device_id: c83b0003189dab2a3fa137b4e527d448
-        - alias: Mode "nuit" le soir si quelqu’un est à la maison
+        - alias: Mode "nuit" le soir si au moins une personne est là
           conditions:
-            - condition: trigger
-              id:
-                - soleil_se_couche
-                - heure_de_coucher
             - condition: or
               conditions:
-                - condition: zone
+                - condition: state
                   entity_id: person.agnes
-                  zone: zone.home
-                - condition: zone
+                  state: home
+                - condition: state
                   entity_id: person.tanguy_baudrin
-                  zone: zone.home
+                  state: home
+            - condition: state
+              entity_id: binary_sensor.mode_jour
+              state: "off"
           sequence:
             - service: alarm_control_panel.alarm_arm_night
               target:
