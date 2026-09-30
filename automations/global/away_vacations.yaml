@@ -21,11 +21,6 @@
     alias: Agnès et Tanguy sont absents
     enabled: true
   actions:
-  - alias: Passer les caméras Arlo en mode armé
-    data: {}
-    target:
-      entity_id: alarm_control_panel.aarlo_location_home
-    action: alarm_control_panel.alarm_arm_away
   - data:
       preset_mode: away
     target:
