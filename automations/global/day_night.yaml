@@ -1,49 +1,96 @@
 - id: open_day_cover
-  alias: Auto - Maison - Volets - Gestion des volets basé sur les horaires et le soleil
+  alias: Auto - Maison - Volets - Ouverture au réveil ou au lever du soleil
   description: |
-    Ouvre les volets et désactive les automatismes lumineux le matin au réveil ou au lever du soleil.
-    Réinitialise le flag lumieres_desactivees_par_media pour éviter que Jellyfin ne restaure les lumières
-    après que cette automation les ait désactivées. (Modifié le 2026-03-06)
+    Ouvre les volets le matin à la heure qui intervient en dernier entre l'heure
+    de réveil et le lever du soleil. Désactive les automatismes lumineux et
+    éteint les lumières allumées. (Migré le 2026-09-30)
   triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.mode_jour
-    to:
-    - 'on'
+  - trigger: sun
+    event: sunrise
+    id: soleil
+  - trigger: time
+    at: input_datetime.heure_de_reveil_de_la_maison
+    id: heure_reveil
+  conditions: []
   actions:
-  - action: input_boolean.turn_off
-    target:
-      entity_id: input_boolean.lumieres_desactivees_par_media
-  - data: {}
-    target:
-      entity_id: input_boolean.lumieres_automatiques
-    alias: Désactivation de l'éclairage automatique
-    action: input_boolean.turn_off
-  - data: {}
-    target:
-      area_id:
-      - bureau
-      - chambre_des_parents
-      - cuisine
-      - salle_a_manger
-      - chambre_louis
-      - chambre_maxime
-    action: cover.open_cover
-  - action: light.turn_off
-    metadata: {}
-    data: {}
-    target:
-      area_id:
-      - salon
-      - salle_a_manger
-      - cuisine
+  - choose:
+    - alias: Soleil après l'heure de réveil
+      conditions:
+      - condition: trigger
+        id: soleil
+      - condition: template
+        value_template: >-
+          {{
+            today_at(states('input_datetime.heure_de_reveil_de_la_maison'))
+            <= now()
+          }}
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.lumieres_desactivees_par_media
+      - data: {}
+        target:
+          entity_id: input_boolean.lumieres_automatiques
+        alias: Désactivation de l'éclairage automatique
+        action: input_boolean.turn_off
+      - data: {}
+        target:
+          area_id:
+          - bureau
+          - chambre_des_parents
+          - cuisine
+          - salle_a_manger
+          - chambre_louis
+          - chambre_maxime
+        action: cover.open_cover
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          area_id:
+          - salon
+          - salle_a_manger
+          - cuisine
+    - alias: Réveil après le lever du soleil
+      conditions:
+      - condition: trigger
+        id: heure_reveil
+      - condition: sun
+        after: sunrise
+      sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.lumieres_desactivees_par_media
+      - data: {}
+        target:
+          entity_id: input_boolean.lumieres_automatiques
+        alias: Désactivation de l'éclairage automatique
+        action: input_boolean.turn_off
+      - data: {}
+        target:
+          area_id:
+          - bureau
+          - chambre_des_parents
+          - cuisine
+          - salle_a_manger
+          - chambre_louis
+          - chambre_maxime
+        action: cover.open_cover
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          area_id:
+          - salon
+          - salle_a_manger
+          - cuisine
   mode: single
 - id: calculate_wakeup_jour
   alias: Auto - Maison - Heure réveil - Définition de l'heure de réveil de la maison
   description: ''
   triggers:
   - trigger: time
-    at: 01:00:00
+    at: '01:00:00'
   conditions: []
   actions:
   - choose:
