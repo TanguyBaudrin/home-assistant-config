@@ -466,8 +466,7 @@
       state: >-
         {{- is_state('calendar.tanguy', 'on')
             and ("non travaillé" not in (state_attr("calendar.tanguy", "message") | default("") | lower))
-            and is_state("person.tanguy_baudrin", "home")
-            and now().hour >= 8 -}}
+            and is_state("person.tanguy_baudrin", "home") -}}
 
 - sensor:
     - name: "Azimuth soleil"
