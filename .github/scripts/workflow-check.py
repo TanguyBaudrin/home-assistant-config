@@ -111,6 +111,36 @@ def check_exec_api(workflow: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_shadowed_globals(workflow: pathlib.Path) -> list[str]:
+    """Refuse de redeclarer un global fourni par actions/github-script.
+
+    github-script execute le script dans un contexte ou `github`, `context`,
+    `core`, `exec`, `io` et `require` sont deja definis. Les redeclarer avec
+    `const`/`let` ne donne pas une variable locale : c'est un `SyntaxError`
+    « Identifier 'exec' has already been declared », et le script n'a jamais
+    tourne. C'est arrive sur `const { exec } = require('@actions/exec')`
+    (run 36673497099), et l'echec n'apparait qu'a l'execution, sur le runner :
+    le YAML est valide, la revue demarre, puis meurt a la premiere ligne.
+    """
+    failures = []
+    shadow = re.compile(
+        r"^\s*(?:const|let|var)\s+(?:\{\s*)?(github|context|core|exec|io|require)\b",
+        re.M,
+    )
+    for kind, _job, label, script in inline_scripts(workflow):
+        if kind != "js":
+            continue
+        for match in shadow.finditer(script):
+            name = match.group(1)
+            failures.append(f"{workflow.name} / {label}")
+            print(
+                f"  FAIL global {workflow.name} / {label} : `{name}` est deja "
+                f"fourni par github-script, le redeclarer est un SyntaxError"
+            )
+            break
+    return failures
+
+
 def check_commit_order(workflow: pathlib.Path) -> list[str]:
     """`git reset agent-output.log` doit precéder `git commit`.
 
@@ -425,6 +455,7 @@ def main(argv: list[str]) -> int:
 
     shell = [f for w in workflows for f in check_shell(w)]
     api = [f for w in workflows for f in check_exec_api(w)]
+    shadowed = [f for w in workflows for f in check_shadowed_globals(w)]
     order = [f for w in workflows for f in check_commit_order(w)]
     guarded = [f for w in workflows for f in check_guarded_commit(w)]
     repo_root = pathlib.Path.cwd()
@@ -434,12 +465,15 @@ def main(argv: list[str]) -> int:
     invocations = check_agent_invocations(repo_root)
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api or order or guarded or agents or models or prompts or invocations:
-        for line in shell + api + order + guarded + agents + models + prompts + invocations:
+    if (shell or api or shadowed or order or guarded or agents or models
+            or prompts or invocations):
+        for line in (shell + api + shadowed + order + guarded + agents + models
+                     + prompts + invocations):
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
             f"{len(api)} appel(s) exec invalide(s), "
+            f"{len(shadowed)} global(s) github-script redeclare(s), "
             f"{len(order)} ordre(s) de commit invalide(s), "
             f"{len(guarded)} commit(s) non garde(s), "
             f"{len(agents)} agent(s) invalide(s), "
@@ -454,6 +488,7 @@ def main(argv: list[str]) -> int:
     print("  ok   modeles : provider declare dans opencode.json")
     print("  ok   prompts : chaque placeholder recoit une valeur")
     print("  ok   invocations : chaque agent factory-* passe par opencode run")
+    print("  ok   github-script : aucun global fourni par l action redeclare")
     return 0
 
 

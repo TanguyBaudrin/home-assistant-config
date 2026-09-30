@@ -108,7 +108,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { exec } = require('@actions/exec');
+            // `exec` est deja fourni par actions/github-script : le declarer
+            // ici leve « SyntaxError: Identifier 'exec' has already been
+            // declared » (run 36673497099).
             const number = context.payload.pull_request?.number;
             if (!Number.isInteger(number) || number <= 0) {
               await core.setFailed('Numeros de pull request introuvable dans l evenement.');
@@ -259,13 +261,17 @@ jobs:
       # reconnait le commentaire de CE run a travers lui, et refuse d'agir si
       # aucun ne correspond.
       #
-      # On publie le rapport meme en cas d'echec de l'echelle ci-dessus : un
-      # agent qui n'a pas rendu de rapport doit laisser une trace, sinon le
-      # run echoue en silence et l'absence de commentaire passe pour un
-      # verdict. Le lien de run reste present dans les deux cas, ce qui evite
-      # qu'un message d'erreur soit lu comme une revue.
+      # `always()` : l'echec de la revue doit laisser une trace. Sans ca, un
+      # agent qui n'a rien rendu produirait un run rouge sans commentaire, et
+      # l'absence de commentaire se lirait comme un silence volontaire. Le lien
+      # de run reste present dans les deux cas, pour que `Appliquer le verdict`
+      # refuse toujours d'agir sur une absence de verdict.
+      #
+      # L'etape se garde aussi quand le numero de pull request est inconnu —
+      # cas d'un echec de `Resoudre la pull request` (run 36673497099). Elle
+      # n'alors rien a poster, et le rendrait en echec pour rien.
       - name: Publier la revue
-        if: always() && steps.resolve.outputs.skip != 'true'
+        if: always() && steps.resolve.outputs.skip != 'true' && steps.resolve.outputs.pr != ''
         uses: actions/github-script@v7
         env:
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
@@ -282,9 +288,6 @@ jobs:
             } catch {
               report = '';
             }
-            // Les lignes de trace de la CLI (barres de progression, sorties de
-            // outils) polluent le rapport : on ne garde que le texte, et on
-            // signale explicitement quand il n'y en a pas.
             if (!report || !/VERDICT:/.test(report)) {
               await github.rest.issues.createComment({
                 ...pr,
