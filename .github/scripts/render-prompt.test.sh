@@ -65,11 +65,16 @@ render() { # render <var-dir> <sortie>
 }
 
 # Fabrique un repertoire de variables de rendu.
-newcase() { # newcase <nom> <numero> <titre> <corps>
+# Le plan valide est une variable comme les trois autres : le prompt a gagne un
+# placeholder, et un test qui ne l'alimente pas teste autre chose que la
+# production. C'est ce qu il s est produit : le cas « complet » laissait
+# `{{PLAN}}` dans le rendu, et le test echouait a juste titre.
+newcase() { # newcase <nom> <numero> <titre> <corps> [plan]
   local d="$WORK/$1"; rm -rf "$d"; mkdir -p "$d"
   printf '%s' "$2" > "$d/ISSUE_NUMBER"
   printf '%s' "$3" > "$d/ISSUE_TITLE"
   printf '%s' "$4" > "$d/ISSUE_BODY"
+  printf '%s' "${5-}" > "$d/PLAN"
   echo "$d"
 }
 
@@ -115,7 +120,9 @@ d=$(newcase vide '' '' '')
 expect "valeurs vides" true "$d"
 
 # 5. toutes variables fournies : plus aucun placeholder ne doit subsister
-d=$(newcase complet 1 T B)
+d=$(newcase complet 1 T B '## Plan
+
+P.')
 if render "$d" "$WORK/complet.rendered" 2>/dev/null; then
   if grep -q '{{[A-Z_]' "$WORK/complet.rendered"; then
     bad "des placeholders subsistent malgre des variables fournies"
@@ -123,12 +130,45 @@ if render "$d" "$WORK/complet.rendered" 2>/dev/null; then
   else ok "toutes variables fournies : aucun placeholder residuel"; fi
 else bad "cas complet : rendu en echec"; fi
 
+# 5 bis. le plan valide prime sur l'issue, et les deux sont bien presents.
+# C est la raison d etre du changement : sur l'issue #3, le plan corrigeait le
+# titre, et un agent qui n'avait recu que le titre a ecrit une porte de garage.
+d=$(newcase plan 3 'Ferme le volet du garage la nuit' \
+  'Ce serait bien que le garage se ferme tout seul la nuit.' \
+  '## Plan
+
+Fermer le volet du SALON la nuit, sans condition de porte.')
+expect "plan valide et issue rendus ensemble" true "$d"
+if grep -q 'Fermer le volet du SALON la nuit' "$d.rendered" 2>/dev/null; then
+  ok "plan valide rendu dans le prompt"; else bad "plan valide absent du prompt"; fi
+if grep -q 'Ferme le volet du garage la nuit' "$d.rendered" 2>/dev/null; then
+  ok "issue conservee comme contexte"; else bad "issue d origine absente du prompt"; fi
+# Un plan qui cite lui-meme un placeholder ne doit pas rescanne.
+d=$(newcase plancite 3 T 'corps' '## Plan
+
+Voir {{ISSUE_BODY}} et {{ value_template }}.')
+expect "plan citant un placeholder" true "$d"
+if grep -q 'Voir {{ISSUE_BODY}} et {{ value_template }}' "$d.rendered" 2>/dev/null; then
+  ok "plan citant un placeholder reste du texte"
+else bad "plan rescane : un placeholder du plan a ete resolu"; fi
+
+# 5 ter. un corps d'issue vide ne doit pas laisser de placeholder : le programme
+# awk confondait fichier absent et fichier vide, et le garde-fou echouait alors
+# sur une issue sans corps.
+d=$(newcase corpsvide 3 'Titre seul' '' '## Plan
+
+P.')
+expect "corps d issue vide" true "$d"
+if grep -q '{{[A-Z_]' "$d.rendered" 2>/dev/null; then
+  bad "corps d issue vide : placeholder laisse dans le rendu"
+else ok "corps d issue vide : aucun placeholder residuel"; fi
+
 # 6. variable manquante : le placeholder doit rester visible pour que le
 #    garde-fou du workflow echoue, au lieu d'un prompt silencieusement tronque
 d="$WORK/absente"; rm -rf "$d"; mkdir -p "$d"
 printf 'x' > "$d/ISSUE_BODY"
 if render "$d" "$WORK/absente.rendered" 2>/dev/null; then
-  if grep -q '{{ISSUE_NUMBER}}\|{{ISSUE_TITLE}}' "$WORK/absente.rendered"; then
+  if grep -q '{{ISSUE_NUMBER}}\|{{ISSUE_TITLE}}\|{{PLAN}}' "$WORK/absente.rendered"; then
     ok "variable manquante : placeholder conserve (garde-fou declenche)"
   else bad "variable manquante : placeholder remplace par du vide en silence"; fi
 else bad "variable manquante : rendu en echec"; fi
