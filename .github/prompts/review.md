@@ -58,6 +58,9 @@ Les fichiers de reference sont :
 
 ## Regles de ton
 
+- **Ecris ta revue en francais, titres compris.** C'est la seule langue de ce
+  depot, et une revue dans une autre langue n'est pas lue. Si une note ou un
+  titre d'en-tete te vient dans une autre langue, traduis-la.
 - Ecris en francais. Cite `fichier:ligne` pour chaque point.
 - Classe chaque point `BLOQUANT` (a corriger avant merge) ou `MINEUR`.
 - Un point est `BLOQUANT` s'il empeche la configuration de fonctionner, s'il
