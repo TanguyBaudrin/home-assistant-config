@@ -142,18 +142,18 @@ jobs:
             // la meme facon : l'un a un corps et des commentaires en ligne a
             // lire, l'autre un commentaire a retrouver. L'etape suivante se
             // base sur cette sortie plutot que sur le nom de l evenement, qui
-            # n'est plus disponible apres.
+            // n'est plus disponible apres.
             core.setOutput('source',
               context.eventName === 'pull_request_review' ? 'review' : 'verdict');
             core.info(`PR #${pr} (${data.head.ref}), ${attempts} essai(s) deja fait(s), `
               + `source ${context.eventName === 'pull_request_review' ? 'revue humaine' : 'verdict'}.`);
 
-            # Le plafond n'est applique que par la revue automatique, qui
+            // Le plafond n'est applique que par la revue automatique, qui
             // verifie ses tentatives avant de dispatcher. Une revue humaine
-            # n'a pas de dispatcher : c'est GitHub qui livre l evenement, et
-            # rien n'arreterait une pull request ou un humain reclique « Request
-            # changes » apres chaque passage. Le meme plafond s'applique donc
-            # ici, sur le meme compteur, et l'escalade prend le relais.
+            // n'a pas de dispatcher : c'est GitHub qui livre l'evenement, et
+            // rien n'arreterait une pull request ou un humain reclique « Request
+            // changes » apres chaque passage. Le meme plafond s'applique donc
+            // ici, sur le meme compteur, et l'escalade prend le relais.
             if (context.eventName === 'pull_request_review'
                 && attempts >= Number(process.env.MAX_ATTEMPTS)) {
               await github.rest.issues.addLabels({
@@ -496,7 +496,7 @@ jobs:
                   '',
                   '---',
                   '',
-                  `*Run \\`${process.env.GITHUB_RUN_ID}\\`.*`,
+                  `*Run \`${process.env.GITHUB_RUN_ID}\`.*`,
                 ].join('\n'),
               });
               core.info('Reponse publiee sur la pull request.');

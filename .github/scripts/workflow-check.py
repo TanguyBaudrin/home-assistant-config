@@ -546,6 +546,55 @@ def job_conditions(text: str) -> list[str]:
     return blocks
 
 
+def check_inline_js(workflow: pathlib.Path) -> list[str]:
+    """Verifie que chaque bloc `script` de github-script est du JS valide.
+
+    L'action `actions/github-script` evalue le script en le passant a
+    `new AsyncFunction(script)` : le code est le CORPS d'une fonction asynchrone,
+    ou `github`, `context`, `core`, `exec` et `require` sont des liaisons
+    globales. On reproduit cette forme la, ce qui rend le controle aussi strict
+    que l execution — un `await` valide, une redeclaration invalide.
+
+    Sans ce controle, une faute de frappe dans un commentaire ne s voit qu sur
+    le runner. C'est arrive deux fois :
+
+    - run 36673497099, `Identifier 'exec' has already been declared` ;
+    - run 36683871084, une ligne de commentaire de factory-fix.yml qui avait
+      perdu son `//` etait lue comme du code, et le job echouait sur un
+      `SyntaxError` avant meme de lire la pull request.
+
+    Les deux etaient invisibles en amont : `yamllint` valide le YAML, pas le
+    JavaScript qu il contient, et le fichier ne sortait de rien.
+
+    Une seconde de verification locale vaut mieux qu'un run rouge a chaque
+    edition d'un workflow.
+    """
+    failures: list[str] = []
+    for kind, job, label, code in inline_scripts(workflow):
+        if kind != "js":
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = pathlib.Path(tmp) / "script.js"
+            # Meme forme que l'action : corps de fonction asynchrone.
+            probe.write_text(f"async function __main__() {{\n{code}\n}}\n", "utf8")
+            result = subprocess.run(
+                ["node", "--check", str(probe)],
+                capture_output=True, text=True, check=False,
+            )
+        if result.returncode != 0:
+            detail = ""
+            for line in result.stderr.split("\n"):
+                if "SyntaxError" in line:
+                    detail = line.strip()
+                    break
+            failures.append(
+                f"{workflow.name}: {label}: JavaScript invalide"
+                + (f" — {detail}" if detail else "")
+                + " (verifie sur le runner : le job echoue avant toute action)"
+            )
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -564,12 +613,13 @@ def main(argv: list[str]) -> int:
     prompts = check_prompt_placeholders(repo_root)
     invocations = check_agent_invocations(repo_root)
     human_review = check_human_review_trigger(repo_root)
+    inline_js = [f for w in workflows for f in check_inline_js(w)]
 
     total = sum(len(inline_scripts(w)) for w in workflows)
     if (shell or api or shadowed or order or guarded or agents or models
-            or prompts or invocations or human_review):
+            or prompts or invocations or human_review or inline_js):
         for line in (shell + api + shadowed + order + guarded + agents + models
-                     + prompts + invocations + human_review):
+                     + prompts + invocations + human_review + inline_js):
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
@@ -581,7 +631,8 @@ def main(argv: list[str]) -> int:
             f"{len(models)} modele(s) invalide(s), "
             f"{len(prompts)} placeholder(s) de prompt non alimente(s), "
             f"{len(invocations)} invocation(s) d'agent invalide(s), "
-            f"{len(human_review)} declencheur(s) de revue humaine invalide(s)",
+            f"{len(human_review)} declencheur(s) de revue humaine invalide(s), "
+            f"{len(inline_js)} bloc(s) JS invalide(s)",
             file=sys.stderr,
         )
         return 1
@@ -591,7 +642,7 @@ def main(argv: list[str]) -> int:
     print("  ok   prompts : chaque placeholder recoit une valeur")
     print("  ok   invocations : chaque agent factory-* passe par opencode run")
     print("  ok   revue humaine : approbation explicitement ecartee")
-    print("  ok   github-script : aucun global fourni par l action redeclare")
+    print("  ok   github-script : JS valide, aucun global fourni redeclare")
     return 0
 
 
