@@ -348,6 +348,74 @@ def check_models(root: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_agent_invocations(root: pathlib.Path) -> list[str]:
+    """Verifie que chaque agent factory-* est invoque d une seule maniere.
+
+    Deux facon d'appeler un agent se disputent le meme poste : l'action
+    `anomalyco/opencode/github` avec son entree `agent:`, et la CLI
+    `opencode run --agent`. Elles ne se comportent pas pareil, et l'action
+    ajoute un controle que la CLI n'a pas.
+
+    L'action appelle `assertPermissions()`, qui interroge le niveau de
+    collaborateur de `github.actor` — l'utilisateur qui a declenche l'evenement,
+    pas le jeton qu'elle utilise ensuite. Toutes les pull requests de ce depot
+    etant ouvertes par `factory-build`, `github.actor` vaut
+    `github-actions[bot]`, qui n'est pas collaborateur : la revue echouait sur
+    `permission: none` (runs 36621537561 et 36672422851) alors que le run
+    ouvert par un humain passait avec `permission: admin` (36621085953). La
+    boucle revue/correction etait donc inerte sur toutes les pull requests
+    produites par l'usine.
+
+    L'echec etait de surcroit muet : l'action poste son message d'erreur en
+    commentaire de revue, l'etape de verdict saute, aucune etiquette n'est
+    posee, et le correcteur ne part jamais. Le run seemed succes au regard des
+    etapes, et la revue n'avait en fait jamais eu lieu.
+
+    On refuse donc l'action pour tout agent factory-*, et on verifie que la
+    forme CLI est bien presente : c'est elle qui porte le verdict.
+    """
+    failures: list[str] = []
+    action_use = re.compile(r"uses:\s*anomalyco/opencode/github")
+
+    for workflow in sorted((root / ".github/workflows").glob("*.yml")):
+        text = workflow.read_text(encoding="utf-8")
+        if action_use.search(text):
+            failures.append(
+                f"{workflow.name}: utilise anomalyco/opencode/github. Cette action "
+                f"refuse les evenements dont github.actor n'est pas collaborateur "
+                f"write/admin, donc toute pull request ouverte par l'usine. "
+                f"Utiliser `opencode run --agent`."
+            )
+
+        for agent in sorted(set(re.findall(r"--agent\s+(factory-[a-z]+)", text))):
+            # L'invocation est étalée sur plusieurs lignes (`opencode run \` puis
+            # `--agent x \`), d'où le DOTALL : sans lui, la forme réelle ne
+            # ressemblerait jamais au motif.
+            if not re.search(rf"opencode run.*?--agent {agent}", text, re.S):
+                failures.append(
+                    f"{workflow.name}: cite --agent {agent} sans invocation "
+                    f"`opencode run --agent {agent}`"
+                )
+
+    # Un agent factory-* defini mais jamais invoque par un workflow est soit
+    # mort, soit invoque par l'action ci-dessus, et dans les deux cas il
+    # ne fait rien.
+    invoked = set()
+    for workflow in (root / ".github/workflows").glob("*.yml"):
+        invoked.update(re.findall(r"--agent\s+(factory-[a-z]+)",
+                                  workflow.read_text(encoding="utf-8")))
+    agents_dir = root / ".opencode/agents"
+    if agents_dir.is_dir():
+        for agent_file in sorted(agents_dir.glob("*.md")):
+            name = agent_file.stem
+            if name.startswith("factory-") and name not in invoked:
+                failures.append(
+                    f"{agents_dir.name}/{agent_file.name}: agent {name} jamais "
+                    f"invoque par un workflow (attendu : `opencode run --agent {name}`)"
+                )
+    return failures
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -363,10 +431,11 @@ def main(argv: list[str]) -> int:
     agents = check_agents(repo_root / ".opencode/agents")
     models = check_models(repo_root)
     prompts = check_prompt_placeholders(repo_root)
+    invocations = check_agent_invocations(repo_root)
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api or order or guarded or agents or models or prompts:
-        for line in shell + api + order + guarded + agents + models + prompts:
+    if shell or api or order or guarded or agents or models or prompts or invocations:
+        for line in shell + api + order + guarded + agents + models + prompts + invocations:
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
@@ -375,7 +444,8 @@ def main(argv: list[str]) -> int:
             f"{len(guarded)} commit(s) non garde(s), "
             f"{len(agents)} agent(s) invalide(s), "
             f"{len(models)} modele(s) invalide(s), "
-            f"{len(prompts)} placeholder(s) de prompt non alimente(s)",
+            f"{len(prompts)} placeholder(s) de prompt non alimente(s), "
+            f"{len(invocations)} invocation(s) d'agent invalide(s)",
             file=sys.stderr,
         )
         return 1
@@ -383,6 +453,7 @@ def main(argv: list[str]) -> int:
     print("  ok   agents opencode : frontmatter dans la palette, noms resolus")
     print("  ok   modeles : provider declare dans opencode.json")
     print("  ok   prompts : chaque placeholder recoit une valeur")
+    print("  ok   invocations : chaque agent factory-* passe par opencode run")
     return 0
 
 

@@ -6,8 +6,37 @@
 # de commande. C'est pourquoi le correcteur, lui, passe par la CLI et non par
 # cette action (voir factory-fix.yml).
 #
-# L'action opencode poste la revue. Une etape suivante en lit le verdict et
-# ajoute l'etiquette `factory/needs-fix`, qui declenche factory-fix.yml.
+# LA REVUE PASSE ELLE AUSSI PAR LA CLI. L'action opencode appelle
+# `assertPermissions()`, qui interroge le niveau de collaborateur de
+# `github.actor` — l'utilisateur qui a declenche l'evenement, et non le jeton
+# qu'elle s'apprete a utiliser :
+#
+#     const { actor } = useContext()
+#     octoRest.repos.getCollaboratorPermissionLevel({ ..., username: actor })
+#     if (!["admin","write"].includes(permission)) throw new Error(...)
+#
+# Or toutes les pull requests de ce depot sont ouvertes par `factory-build`,
+# donc `github.actor` vaut `github-actions[bot]`, qui n'est pas collaborateur :
+# l'API repond `permission: none` et la revue echoue. C'est deterministe, pas
+# une alea : le run 36621085953 (ouvert par un humain) est passe avec
+# `permission: admin`, les runs 36621537561 et 36672422851 (ouverts par
+# l'usine) ont echoue avec `permission: none`. `TOKEN` ne corrigeait rien :
+# `useEnvGithubToken()` lit `process.env["TOKEN"]`, mais `github/action.yml` ne
+# le transmet pas dans son bloc `env:` et n'affiche jamais « skipped (using
+# github token) » — le controle passait donc toujours par l'API.
+#
+# Pire, l'echec etait silencieux : l'action poste quand meme son message
+# d'erreur en commentaire de revue, et l'etape suivante saute, donc aucune
+# etiquette n'est posee et le correcteur ne part jamais. La boucle
+# revue/correction etait inerte sur toutes les pull requests produites par
+# l'usine, sans qu'aucun signal ne le dise.
+#
+# La CLI supprime ce controle par construction, supprime le header
+# `GIT_CONFIG_*` qui n'existait que pour le `git fetch` de l'action, et rend la
+# revue a l'identique du correcteur.
+#
+# Le relecteur poste lui-meme sa revue en commentaire, via une etape
+# github-script : il n'a pas de droit d'ecriture sur la pull request.
 name: Factory Review
 
 on:
@@ -38,6 +67,9 @@ env:
   ESCALATE_LABEL: factory/escalade
   NO_REVIEW_LABEL: factory/no-review
   MAX_ATTEMPTS: "2"
+  # CLI epinglee : sans --version le script d'installation telecharge la
+  # derniere version, qui peut casser le frontmatter d'un agent.
+  OPENCODE_VERSION: "1.18.33"
 
 jobs:
   review:
@@ -61,11 +93,22 @@ jobs:
       # plus que ces sorties. Le controle anti-fork est refait depuis l'API :
       # `if:` lit la charge utile brute, et c'est la branche resolue par
       # l'API qui fait foi.
-      - name: Resoudre la pull request
+      #
+      # Le diff est resolu ICI, et pas par l'agent : `factory-review` a
+      # `bash: deny`, il ne peut donc pas lancer `git diff`. Le prompt lui
+      # annoncait pourtant « l'outil de recherche de differences » (review.md),
+      # qui n'existe ni dans l'action ni dans la CLI : c'etait un mirage, et
+      # l'agent ne pouvait inspecter que l'arbre de travail deja coché. On lui
+      # fournit donc le diff, ainsi que la liste des fichiers touches.
+      #
+      # L'etape d'apres cocheck la branche de la pull request, pour que
+      # l'agent lise les fichiers de la PR et non ceux de la base.
+      - name: Resoudre la pull request et son diff
         id: resolve
         uses: actions/github-script@v7
         with:
           script: |
+            const { exec } = require('@actions/exec');
             const number = context.payload.pull_request?.number;
             if (!Number.isInteger(number) || number <= 0) {
               await core.setFailed('Numeros de pull request introuvable dans l evenement.');
@@ -90,6 +133,42 @@ jobs:
             core.info(`PR #${number} (${data.head.ref}).`);
             if (skip) core.info('Etiquette ' + process.env.NO_REVIEW_LABEL + ' : revue ignoree.');
 
+            // `git diff` compare des commits, pas des noms de branches : les deux
+            // SHA doivent etre presents localement. Le checkout initial a bien
+            // `fetch-depth: 0`, mais il ne porte que la base.
+            for (const ref of [data.head.sha, data.base.sha]) {
+              const r = await exec.getExecOutput('git', ['fetch', '--no-tags', 'origin', ref],
+                { ignoreReturnCode: true });
+              if (r.exitCode !== 0) {
+                await core.setFailed(`git fetch de ${ref.slice(0, 7)} a echoue : `
+                  + r.stderr.trim());
+                return;
+              }
+            }
+
+            // Un diff tronque ferait passer une suppression de masse pour un
+            // changement benin : on mesure, et on avertit plutot que d'agir
+            // sur un diff incomplet.
+            const diff = await exec.getExecOutput(
+              'git', ['diff', '--no-color', data.base.sha, data.head.sha],
+              { ignoreReturnCode: true },
+            );
+            if (diff.exitCode !== 0) {
+              await core.setFailed('git diff a echoue : ' + diff.stderr.trim());
+              return;
+            }
+            const files = await exec.getExecOutput(
+              'git', ['diff', '--name-only', data.base.sha, data.head.sha],
+              { ignoreReturnCode: true },
+            );
+            core.setOutput('diff', diff.stdout);
+            core.setOutput('files', files.stdout.trim() || '(aucun)');
+            core.info(`Diff : ${diff.stdout.length} car., `
+              + `${files.stdout.trim().split('\n').filter(Boolean).length} fichier(s).`);
+            if (diff.stdout.length > 200000) {
+              core.warning('Diff volumineux : la revue peut etre partielle.');
+            }
+
       # Les variables OmniRoute ne sont pas exportees ici : elles sont deja
       # dans l'environnement du runner, injectees par son
       # /etc/ha-factory/runner.env via systemd EnvironmentFile.
@@ -103,10 +182,19 @@ jobs:
             echo "- Titre : ${PR_TITLE}"
             echo "- Branche : ${PR_HEAD}"
             echo
+            echo "Fichiers modifies :"
+            echo "${PR_FILES}"
+            echo
+            echo "Diff (base -> pull request) :"
+            echo '```diff'
+            printf '%s\n' "${PR_DIFF}"
+            echo '```'
+            echo
             cat .github/prompts/review.md
           } > /tmp/prompt.txt
           # GITHUB_OUTPUT est ligne par ligne : une valeur multiligne doit
-          # utiliser la forme here-document, sinon seul le premier ligne est lu.
+          # utiliser la forme here-document, sinon seule la premiere ligne est
+          # lue.
           {
             echo 'value<<FACTORY_PROMPT_EOF'
             cat /tmp/prompt.txt
@@ -116,49 +204,106 @@ jobs:
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
           PR_TITLE: ${{ steps.resolve.outputs.title }}
           PR_HEAD: ${{ steps.resolve.outputs.head_ref }}
+          PR_FILES: ${{ steps.resolve.outputs.files }}
+          # Un diff contient des backslashes et des dollars : le passer par
+          # l'environnement evite toute reinterpretation par le shell.
+          PR_DIFF: ${{ steps.resolve.outputs.diff }}
 
-      # L action fait `git fetch` sur la branche de la PR, avec les credentials
-      # ambiants. Le checkout etant en `persist-credentials: false`, il n y en a
-      # aucun, et le fetch echoue sur « could not read Username for
-      # https://github.com ». On ne reactive pas persist-credentials : le token
-      # se retrouverait dans .git/config, que le relecteur peut lire (il a
-      # `read: allow` et lit du texte non fiable). L authentification passe donc
-      # par GIT_CONFIG_*, que git lit dans l environnement : elle vaut pour les
-      # git de l action, et reste hors de portee d un agent sans bash.
-      - name: Fournir un credential git a l'action
+      # CLI epinglee : sans --version le script d'installation telecharge la
+      # derniere version, qui peut casser le frontmatter d'un agent.
+      - name: Installer opencode
+        id: install
         run: |
           set -euo pipefail
-          header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\n')"
-          {
-            echo "GIT_CONFIG_COUNT=1"
-            echo "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader"
-            echo "GIT_CONFIG_VALUE_0=$header"
-          } >> "$GITHUB_ENV"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          mkdir -p ~/.opencode/bin
+          curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
+          echo "installed=$(~/.opencode/bin/opencode --version)" >> "$GITHUB_OUTPUT"
 
+      # L'arbre de travail doit contenir la pull request, pas la base : le
+      # relecteur n'a que `read`, `glob` et `grep`, et lit donc des fichiers
+      # reels. L'action le faisait par `git fetch` + `git checkout` de la
+      # branche, avec un header d'autorisation passe par l'environnement
+      # (`GIT_CONFIG_*`) parce que le checkout est en
+      # `persist-credentials: false`. Ce header n'existait que pour le
+      # `git fetch` de l'action : la revue ne pousse rien, il disparait avec
+      # elle.
+      - name: Checkout la branche de la pull request
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ steps.resolve.outputs.head_ref }}
+          fetch-depth: 0
+
+      # Les variables OmniRoute ne sont pas exportees ici : elles sont deja
+      # dans l'environnement du runner, injectees par son
+      # /etc/ha-factory/runner.env via systemd EnvironmentFile.
+      #
+      # Meme forme que le correcteur (voir factory-fix.yml) : pas d'`agent:`,
+      # le choix se fait par `--agent`. `GITHUB_TOKEN` n'est pas passe a
+      # l'agent : le relecteur n'a aucune permission d'ecriture, et il n'a pas
+      # a appeler l'API. Il rend sa revue sur sa sortie standard.
       - name: Revue par l'agent
         if: steps.resolve.outputs.skip != 'true'
-        uses: anomalyco/opencode/github@a3b97d9090ccf4aa9ac32268486283e3131e36b4  # github-v1.2.25
         env:
-          # L'action documente `use_github_token: true` comme « uses the
-          # GITHUB_TOKEN env var », mais sa source lit `process.env["TOKEN"]`
-          # (index.ts:342) et ne consulte jamais USE_GITHUB_TOKEN. Avec le seul
-          # GITHUB_TOKEN, l'action retombait sur l'echange OIDC de l'App
-          # opencode, puis verifiait les droits du collaborateur
-          # `github-actions[bot]`, qui n'en a aucun : « User
-          # github-actions[bot] does not have write permissions ». Et le
-          # rapport, poste avec un token inutilisable, finissait en
-          # « Resource not accessible by integration ». TOKEN est la variable
-          # que le code lit reellement, pour le controle de droits comme pour
-          # l'appel a l'API.
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT_BODY: ${{ steps.prompt.outputs.value }}
+        run: |
+          set -euo pipefail
+          ~/.opencode/bin/opencode run \
+            --agent factory-review \
+            --model omniroute/agnes/agnes-2.5-flash \
+            "$PROMPT_BODY" 2>&1 | tee agent-output.log
+
+      # L'action posait elle-meme le commentaire. La CLI ne le fait pas : c'est
+      # cette etape qui publie la sortie de l'agent, et qui y ajoute le lien
+      # vers le run. Ce lien n'est pas cosmetique, `Appliquer le verdict`
+      # reconnait le commentaire de CE run a travers lui, et refuse d'agir si
+      # aucun ne correspond.
+      #
+      # On publie le rapport meme en cas d'echec de l'echelle ci-dessus : un
+      # agent qui n'a pas rendu de rapport doit laisser une trace, sinon le
+      # run echoue en silence et l'absence de commentaire passe pour un
+      # verdict. Le lien de run reste present dans les deux cas, ce qui evite
+      # qu'un message d'erreur soit lu comme une revue.
+      - name: Publier la revue
+        if: always() && steps.resolve.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_TITLE: ${{ steps.resolve.outputs.title }}
+          RUN_ID: ${{ github.run_id }}
         with:
-          model: omniroute/agnes/agnes-2.5-flash
-          use_github_token: true
-          share: false
-          prompt: ${{ steps.prompt.outputs.value }}
+          script: |
+            const fs = require('fs');
+            const pr = { owner: context.repo.owner, repo: context.repo.repo,
+                         issue_number: Number(process.env.PR_NUMBER) };
+            let report = '';
+            try {
+              report = fs.readFileSync('agent-output.log', 'utf8').trim();
+            } catch {
+              report = '';
+            }
+            // Les lignes de trace de la CLI (barres de progression, sorties de
+            // outils) polluent le rapport : on ne garde que le texte, et on
+            // signale explicitement quand il n'y en a pas.
+            if (!report || !/VERDICT:/.test(report)) {
+              await github.rest.issues.createComment({
+                ...pr,
+                body: `## Revue automatique — aucune revue produite\n\n`
+                  + `L'agent s'est arrete sans rendre de verdict. A verifier manuellement.\n\n`
+                  + `[github run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
+                  + `/actions/runs/${process.env.RUN_ID})`,
+              });
+              core.warning('Aucun VERDICT dans la sortie de l agent.');
+              return;
+            }
+            await github.rest.issues.createComment({
+              ...pr,
+              body: `## Revue de la pull request #${pr.issue_number}`
+                + ` — ${process.env.PR_TITLE}\n\n${report}\n\n---\n`
+                + `[github run](${context.serverUrl}`
+                + `/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.RUN_ID})`,
+            });
+            core.info('Revue publiee.');
 
       - name: Appliquer le verdict
         if: steps.resolve.outputs.skip != 'true'
@@ -178,18 +323,18 @@ jobs:
             // Chercher le DERNIER commentaire n'est pas lire son verdict. Deux
             // raisons, et la seconde a deja produit un faux « Verdict OK » :
             //
-            // - une etape qui echoue, ou une action qui n'a rien su poster,
-            //   laisse derriere elle un commentaire sans `VERDICT:`. C'est ce
-            //   qui s'est produit au run 36621537561, dont le commentaire ne
-            //   contient que « User github-actions[bot] does not have write
-            //   permissions » ;
+            // - une etape qui echoue, ou un agent qui n'a rien rendu, laisse
+            //   derriere elle un commentaire sans `VERDICT:`. C'est ce qui s'est
+            //   produit au run 36621537561, dont le commentaire ne contient que
+            //   « User github-actions[bot] does not have write permissions » ;
             // - une etiquette posee a la main, ou le correcteur, commentent
             //   aussi, et passent donc devant la revue.
             //
-            // L'action ajoute un lien vers son run a chaque commentaire qu'elle
-            // poste. On ne retient donc que le commentaire de CE run, et on
-            // refuse d'agir si le verdict n'y est pas : mieux vaut une pull
-            // request sans etiquette qu'une etiquette fausse.
+            // `Publier la revue` ajoute un lien vers son run a chaque
+            // commentaire qu'elle poste, y compris a celui qui signale une
+            // revue manquante. On ne retient donc que le commentaire de CE run,
+            // et on refuse d'agir si le verdict n'y est pas : mieux vaut une
+            // pull request sans etiquette qu'une etiquette fausse.
             const mine = comments.filter(c =>
               (c.body ?? '').includes(`/actions/runs/${process.env.RUN_ID}`));
             const body = mine.length ? (mine[mine.length - 1].body ?? '') : '';

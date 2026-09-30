@@ -111,10 +111,10 @@ sudo systemctl restart "actions.runner.<runner-name>"
 Everything the factory executes is pinned, because an unpinned CLI that
 resolves to "latest" can break agent frontmatter without any diff in the repo:
 
-- the action is pinned to the commit SHA of `github-v1.2.25`
-  (`a3b97d9`), not to `@latest`;
 - the CLI is installed with `opencode install --version 1.18.33` via
-  `OPENCODE_VERSION`, in all four jobs that install it.
+  `OPENCODE_VERSION`, in every job that runs an agent. The reviewer included:
+  while it used the action, its CLI came from the action's composite step and
+  was the one version not controlled by `OPENCODE_VERSION`.
 
 Verify the pins locally:
 
@@ -122,11 +122,6 @@ Verify the pins locally:
 ~/.opencode/bin/opencode --version          # doit afficher 1.18.33
 ~/.opencode/bin/opencode agent list         # les 5 agents factory-*
 ```
-
-Note the action's composite step installs its own CLI at run time. Since the
-reviewer is the only job using the action, its CLI version is the one thing
-not controlled by `OPENCODE_VERSION`; that is the reason the reviewer needs no
-write access and therefore cannot be harmed by a version change.
 
 ### Labels must exist before any agent runs
 
@@ -188,18 +183,58 @@ The prompt tells the agent not to "cover both versions" when the plan and the
 title disagree. An automation that does more than the plan is unverifiable, and
 was never what was asked for.
 
-### Why the reviewer uses the action and the fixer uses the CLI
+### Both agents use the CLI, and why the reviewer used to be an exception
 
 `anomalyco/opencode/github` ignores its `agent` input — the published CLI never
 reads that variable — and `default_agent` is a single global value. A read-only
-reviewer and a writing fixer therefore need two separate invocations: the action
-for the reviewer, `opencode run --agent factory-fix` for the fixer.
+reviewer and a writing fixer therefore need two separate invocations, and the
+fixer is invoked as `opencode run --agent factory-fix`. The reviewer now uses
+the same form, `opencode run --agent factory-review`, for a second reason.
+
+The action gates every run on `assertPermissions()`, which asks the API for the
+**collaborator permission of `github.actor`** — the user who triggered the event,
+not the token the action is about to use:
+
+```ts
+const { actor } = useContext()
+octoRest.repos.getCollaboratorPermissionLevel({ ..., username: actor })
+if (!["admin", "write"].includes(permission)) throw new Error(...)
+```
+
+Every PR in this repository is opened by `factory-build`, so `github.actor` is
+`github-actions[bot]`, which is not a collaborator: the API answers
+`permission: none` and the review throws. This is deterministic, not flaky — the
+human-opened run `36621085953` passed with `permission: admin`, and the
+factory-opened runs `36621537561` and `36672422851` failed with `permission:
+none`. The reviewer had therefore never once reviewed a machine-built PR.
+
+The failure was also quiet. The action posts its own error text as a review
+comment, the verdict step is then skipped, no label is applied, and the fixer
+never starts. The review/fix loop was inert on every factory-built PR while every
+run still reported "a review happened".
+
+Setting `TOKEN` did not help, and the note in the workflow claiming it did was
+wrong. `useEnvGithubToken()` reads `process.env["TOKEN"]`, but the action's
+`action.yml` does not forward `TOKEN` in its own `env:` block, so the
+`skipped (using github token)` line never appeared in any run and the API check
+always ran.
+
+The CLI has no such gate, and the reviewer no longer needs the `GIT_CONFIG_*`
+authorisation header that existed only to serve the action's `git fetch` — the
+review pushes nothing.
 
 This is confirmed, not assumed: `opencode agent list` shows the five
 `factory-*` agents as `mode: all`, and `opencode run --help` lists `--agent`.
 `opencode agent list` also confirms the permission model actually took effect —
 `factory-review` reports `edit: deny` and `bash: deny`, the four writing agents
 report `edit: allow` with a bash allowlist.
+
+Because the reviewer has `bash: deny`, it cannot run `git diff`, and neither the
+action nor the CLI provides a diff tool. `review.md` used to tell the agent to
+"use "the diff search tool", which does not exist; the reviewer could only read
+whatever happened to be in the working tree. The workflow now resolves the diff
+itself and passes it in the prompt, and the workflow checks reject a prompt that
+promises a tool the agent cannot have.
 
 
 ### Cost and retry bounds
