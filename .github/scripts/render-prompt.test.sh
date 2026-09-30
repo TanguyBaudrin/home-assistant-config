@@ -65,16 +65,18 @@ render() { # render <var-dir> <sortie>
 }
 
 # Fabrique un repertoire de variables de rendu.
-# Le plan valide est une variable comme les trois autres : le prompt a gagne un
-# placeholder, et un test qui ne l'alimente pas teste autre chose que la
-# production. C'est ce qu il s est produit : le cas « complet » laissait
-# `{{PLAN}}` dans le rendu, et le test echouait a juste titre.
+# Chaque placeholder du prompt a sa variable ici. Il en a deja manque deux —
+# PLAN puis APPROVED_BY — et les tests ont echoue chaque fois avant le commit :
+# un test qui n'alimente pas toutes les variables du prompt ne teste pas la
+# production. Apres ajout d'un placeholder ici, verifier les deux cas « complet »
+# et « corps vide ».
 newcase() { # newcase <nom> <numero> <titre> <corps> [plan]
   local d="$WORK/$1"; rm -rf "$d"; mkdir -p "$d"
   printf '%s' "$2" > "$d/ISSUE_NUMBER"
   printf '%s' "$3" > "$d/ISSUE_TITLE"
   printf '%s' "$4" > "$d/ISSUE_BODY"
   printf '%s' "${5-}" > "$d/PLAN"
+  printf '%s' 'TanguyBaudrin' > "$d/APPROVED_BY"
   echo "$d"
 }
 

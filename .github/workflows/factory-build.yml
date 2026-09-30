@@ -111,6 +111,36 @@ jobs:
                 + 'validation d un plan par factory-spec.yml.');
               return;
             }
+
+            // Qui a valide ? En posant l etiquette, et non en ecrivant le plan.
+            //
+            // Le plan est TOUJOURS ecrit par github-actions[bot] : c'est
+            // factory-spec.yml qui le poste. Un premier version de ce controle
+            // rejetait donc systematically le plan, enpretendant qu un plan
+            // ecrit par un bot ne pouvait pas etre valide, alors que c est
+            // justement ce que fait l'usine. La preuve de la validation est
+            // dans le journal de l'issue : qui a pose l'etiquette.
+            const events = await fetchAll(github.rest.issues.listEventsForTimeline,
+                                          { ...context.repo, issue_number: number });
+            const approvals = events.filter(e =>
+              e.event === 'labeled'
+              && (e.label?.name ?? null) === process.env.APPROVE_LABEL);
+            const approval = approvals.length ? approvals[approvals.length - 1] : null;
+            if (!approval) {
+              await core.setFailed(
+                `Aucun evenement « etiquette posee » pour ${process.env.APPROVE_LABEL}. `
+                + 'Impossible de dire qui a autorise l ecriture.');
+              return;
+            }
+            if (approval.actor?.type === 'Bot') {
+              await core.setFailed(
+                `${process.env.APPROVE_LABEL} a ete posee par `
+                + `${approval.actor?.login}, un bot. L autorisation d ecrire `
+                + 'vient d un humain.');
+              return;
+            }
+            core.info(`Plan valide par ${approval.actor?.login}.`);
+
             const comments = await fetchAll(github.rest.issues.listComments,
                                             { ...context.repo, issue_number: number });
             const plans = comments.filter(c => (c.body ?? '').includes(process.env.PLAN_MARKER));
@@ -123,11 +153,15 @@ jobs:
                 + 'factory-spec.yml, ou retirer l etiquette.');
               return;
             }
-            // Le plan est le dernier, et son auteur doit etre un humain : un
-            // plan ecrit par un bot, ou par un autre agent, n a pas ete valide
-            // par la personne qui a pose l etiquette.
-            if (plan.user?.type === 'Bot') {
-              await core.setFailed('Le dernier plan porte par un bot, pas par un humain.');
+            // Un plan posterieurement a la validation n'a pas ete relu : on
+            // implemente alors quelque chose que personne n'a vu. Cela suppose
+            // que l'etiquette a ete retiree puis reposee, l 'usine ne
+            // redigeant plus de plan une fois l'etiquette posee.
+            if (plan.created_at > approval.created_at) {
+              await core.setFailed(
+                'Le dernier plan est postérieur à la validation : il n a pas '
+                + 'été relu. Relire le plan, retirer puis reposer '
+                + `${process.env.APPROVE_LABEL}.`);
               return;
             }
             const text = plan.body.split(process.env.PLAN_MARKER).join('').trim();
@@ -137,6 +171,7 @@ jobs:
               return;
             }
             core.setOutput('plan', text.slice(index));
+            core.setOutput('approved_by', approval.actor?.login ?? '');
             core.setOutput('skip', 'false');
             core.setOutput('number', String(number));
             core.setOutput('title', title);
@@ -151,6 +186,7 @@ jobs:
           ISSUE_TITLE: ${{ steps.issue.outputs.title }}
           ISSUE_BODY: ${{ steps.issue.outputs.body }}
           PLAN: ${{ steps.issue.outputs.plan }}
+          APPROVED_BY: ${{ steps.issue.outputs.approved_by }}
         run: |
           set -euo pipefail
           # Les valeurs passent par des fichiers et un rendu awk, jamais par
@@ -165,6 +201,7 @@ jobs:
           # Le plan est lui aussi multiligne, et peut contenir n'importe quoi :
           # il passe par le meme chemin, jamais par sed.
           printf '%s' "$PLAN"         > "$RUNNER_TEMP/prompt-vars/PLAN"
+          printf '%s' "$APPROVED_BY"  > "$RUNNER_TEMP/prompt-vars/APPROVED_BY"
 
           awk -v dir="$RUNNER_TEMP/prompt-vars" '
             {

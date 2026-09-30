@@ -4,7 +4,8 @@ Traite l'issue GitHub numero {{ISSUE_NUMBER}}.
 
 Il a ete redige par factory-spec.yml, relu, corrige au fil des commentaires,
 puis valide explicitement par la personne qui a pose l'etiquette
-`to-implement`. **C'est lui que tu implementes.**
+`to-implement` — {{APPROVED_BY}} sur cette issue. **C'est lui que tu
+implementes.**
 
 ## Plan valide
 
