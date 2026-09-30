@@ -240,6 +240,64 @@ def check_agents(agents_dir: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_prompt_placeholders(root: pathlib.Path) -> list[str]:
+    """Verifie que chaque placeholder d un prompt recoit une valeur.
+
+    Les deux rendus sont differents — awk pour le build, JavaScript pour la
+    spec — et un placeholder oublie d un seul cote ne casse rien localement :
+    le prompt part, l'agent recoit la chaine `{{PLAN}}` litterale, et ne le
+    remarque pas. Le garde-fou du build voit bien le `{{` residuel et echoue
+    tard, sur le runner, apres le checkout et l installation de la CLI.
+
+    On verifie donc, pour chaque prompt, que chaque placeholder trouve est bien
+    alimente : par un `printf` vers prompt-vars pour le build, par une cle du
+    tableau `vars` pour la spec.
+    """
+    failures: list[str] = []
+    placeholders = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
+
+    prompts = root / ".github/prompts"
+    if not prompts.is_dir():
+        return [f"{prompts} absent"]
+
+    for prompt in sorted(prompts.glob("*.md")):
+        keys = set(placeholders.findall(prompt.read_text(encoding="utf-8")))
+        if not keys:
+            continue
+        # Le workflow qui rend ce prompt : celui dont le nom correspond, ou le
+        # seul qui cite le prompt.
+        candidates = [
+            w for w in sorted((root / ".github/workflows").glob("*.yml"))
+            if prompt.name in w.read_text(encoding="utf-8")
+        ]
+        if not candidates:
+            failures.append(f"{prompt.name}: aucun workflow ne le rend")
+            continue
+        if len(candidates) > 1:
+            failures.append(
+                f"{prompt.name}: rendu par {len(candidates)} workflows "
+                f"({', '.join(w.name for w in candidates)}), ambigu"
+            )
+            continue
+        text = candidates[0].read_text(encoding="utf-8")
+        for key in sorted(keys):
+            # Les trois rendus ne se ressemblent pas, et on ne cherche pas a
+            # les unifier : le build ecrit un fichier par variable et laisse awk
+            # le lire (`prompt-vars/ISSUE_TITLE`), la spec passe par un tableau
+            # JavaScript, la correction et la migration font un remplacement
+            # sed ou String.replace. Ce que le controle verifie, c'est la chose
+            # simple qui compte : le workflow parle-t-il de ce placeholder.
+            # Un `{{PLAN}}` ajoute au prompt et oublie dans le workflow est
+            # aujourd hui invisible, et part tel quel a l agent.
+            token = "{{" + key + "}}"
+            if token not in text and "prompt-vars/" + key not in text:
+                failures.append(
+                    f"{prompt.name}: placeholder {key} jamais alimente par "
+                    f"{candidates[0].name}"
+                )
+    return failures
+
+
 def check_models(root: pathlib.Path) -> list[str]:
     """Verifie que le provider de chaque modeleappele existe dans opencode.json.
 
@@ -304,10 +362,11 @@ def main(argv: list[str]) -> int:
     repo_root = pathlib.Path.cwd()
     agents = check_agents(repo_root / ".opencode/agents")
     models = check_models(repo_root)
+    prompts = check_prompt_placeholders(repo_root)
 
     total = sum(len(inline_scripts(w)) for w in workflows)
-    if shell or api or order or guarded or agents or models:
-        for line in shell + api + order + guarded + agents + models:
+    if shell or api or order or guarded or agents or models or prompts:
+        for line in shell + api + order + guarded + agents + models + prompts:
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
@@ -315,13 +374,15 @@ def main(argv: list[str]) -> int:
             f"{len(order)} ordre(s) de commit invalide(s), "
             f"{len(guarded)} commit(s) non garde(s), "
             f"{len(agents)} agent(s) invalide(s), "
-            f"{len(models)} modele(s) invalide(s)",
+            f"{len(models)} modele(s) invalide(s), "
+            f"{len(prompts)} placeholder(s) de prompt non alimente(s)",
             file=sys.stderr,
         )
         return 1
     print(f"  ok   {total} blocs inlines : shell, API exec et commits valides")
     print("  ok   agents opencode : frontmatter dans la palette, noms resolus")
     print("  ok   modeles : provider declare dans opencode.json")
+    print("  ok   prompts : chaque placeholder recoit une valeur")
     return 0
 
 

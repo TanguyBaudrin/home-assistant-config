@@ -37,6 +37,12 @@ env:
   OPENCODE_VERSION: "1.18.33"
   TRIGGER_LABEL: to-implement
   BRANCH_PREFIX: factory/build/
+  # L'etiquette qui autorise l'ecriture, et le marqueur qui permet de retrouver
+  # le plan valide. Les deux doivent rester identiques a ceux de
+  # factory-spec.yml : c'est ce qui relie une autorisation humaine au plan qu'elle
+  # a valide.
+  APPROVE_LABEL: to-implement
+  PLAN_MARKER: "<!-- factory-spec -->"
 
 jobs:
   build:
@@ -87,6 +93,50 @@ jobs:
             const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-')
               .replace(/^-|-$/g, '').slice(0, 40) || 'issue';
             core.info(`Issue ${number} : ${title}`);
+
+            // Le plan valide remplace l'issue comme cahier des charges.
+            //
+            // Sans lui, l'agent ne recoit que le titre et le corps, c'est-a-dire
+            // ce que l'utilisateur a ecrit AVANT d'etre precise par la phase de
+            // specification. Sur l'issue #3, le plan avait corrige « garage » en
+            // « volet du salon », sans condition de porte ; le titre, lui,
+            // disait toujours « garage », et l'agent a ecrit
+            // automations/garage/door.yaml — une porte de garage, a cote d'un
+            // plan validé qui parlait d'une fenetre. Le titre d une issue est
+            // un brouillon : seul le plan porte la decision.
+            if (!(issue.labels ?? []).some(l => l.name === process.env.APPROVE_LABEL)) {
+              await core.setFailed(
+                `L'etiquette ${process.env.APPROVE_LABEL} n est pas posee. `
+                + 'C est elle qui autorise l ecriture, et elle ne se pose qu apres '
+                + 'validation d un plan par factory-spec.yml.');
+              return;
+            }
+            const comments = await fetchAll(github.rest.issues.listComments,
+                                            { ...context.repo, issue_number: number });
+            const plans = comments.filter(c => (c.body ?? '').includes(process.env.PLAN_MARKER));
+            const plan = plans.length ? plans[plans.length - 1] : null;
+            if (!plan) {
+              await core.setFailed(
+                `Aucun plan de specification sur l'issue ${number}, alors que `
+                + `${process.env.APPROVE_LABEL} est posee. Un plan est ecrit par `
+                + 'factory-spec.yml et se reconnait a son marqueur. Relancer '
+                + 'factory-spec.yml, ou retirer l etiquette.');
+              return;
+            }
+            // Le plan est le dernier, et son auteur doit etre un humain : un
+            // plan ecrit par un bot, ou par un autre agent, n a pas ete valide
+            // par la personne qui a pose l etiquette.
+            if (plan.user?.type === 'Bot') {
+              await core.setFailed('Le dernier plan porte par un bot, pas par un humain.');
+              return;
+            }
+            const text = plan.body.split(process.env.PLAN_MARKER).join('').trim();
+            const index = text.indexOf('## Plan');
+            if (index < 0) {
+              await core.setFailed('Le dernier commentaire marque ne contient pas de section `## Plan`.');
+              return;
+            }
+            core.setOutput('plan', text.slice(index));
             core.setOutput('skip', 'false');
             core.setOutput('number', String(number));
             core.setOutput('title', title);
@@ -100,6 +150,7 @@ jobs:
           ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
           ISSUE_TITLE: ${{ steps.issue.outputs.title }}
           ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          PLAN: ${{ steps.issue.outputs.plan }}
         run: |
           set -euo pipefail
           # Les valeurs passent par des fichiers et un rendu awk, jamais par
@@ -111,6 +162,9 @@ jobs:
           printf '%s' "$ISSUE_NUMBER" > "$RUNNER_TEMP/prompt-vars/ISSUE_NUMBER"
           printf '%s' "$ISSUE_TITLE"  > "$RUNNER_TEMP/prompt-vars/ISSUE_TITLE"
           printf '%s' "$ISSUE_BODY"   > "$RUNNER_TEMP/prompt-vars/ISSUE_BODY"
+          # Le plan est lui aussi multiligne, et peut contenir n'importe quoi :
+          # il passe par le meme chemin, jamais par sed.
+          printf '%s' "$PLAN"         > "$RUNNER_TEMP/prompt-vars/PLAN"
 
           awk -v dir="$RUNNER_TEMP/prompt-vars" '
             {
@@ -125,15 +179,21 @@ jobs:
                 out = out substr(rest, 1, RSTART - 1)
                 key = substr(rest, RSTART + 2, RLENGTH - 4)
                 f = dir "/" key
-                if ((getline v < f) > 0) {
+                # `getline v < f` renvoie -1 si le fichier ne s ouvre pas, et 0
+                # a la fin de lecture, y compris pour un fichier vide. Tester
+                # `> 0` confondait donc les deux : un corps d issue vide, ou un
+                # plan vide, laissait son placeholder dans le prompt, et le
+                # garde-fou plus bas faisait echouer le job en annonçant un
+                # placeholder non resolu. Tester `>= 0` distingue un fichier
+                # ouvert et vide d un fichier absent.
+                if ((getline v < f) >= 0) {
                   val = v
                   while ((getline v < f) > 0) val = val "\n" v
                   close(f)
                   out = out val
                 } else {
                   # Fichier absent : on laisse le placeholder visible pour que
-                  # le garde-fou plus bas echoue. Un fichier vide en revanche
-                  # est legitime (corps d issue vide) et donne bien val vide.
+                  # le garde-fou plus bas echoue.
                   out = out substr(rest, RSTART, RLENGTH)
                 }
                 rest = substr(rest, RSTART + RLENGTH)
