@@ -446,6 +446,106 @@ def check_agent_invocations(root: pathlib.Path) -> list[str]:
     return failures
 
 
+def check_human_review_trigger(root: pathlib.Path) -> list[str]:
+    """Verifie que le declencheur « revue humaine » ne part pas sur une approbation.
+
+    Un `pull_request_review` est livre pour les trois boutons de la revue :
+    « Request changes », « Approve » et « Comment ». Les trois produisent le
+    meme evenement, et le seul ce qui les distingue est `review.state` dans le
+    `if` du job.
+
+    L'oubli du filtre n'a rien de spectaculaire : le run demarre, l'agent
+    corrige ce qu'il peut, pousse, et le commit dit « corrections des retours
+    de revue humaine » alors que personne n'en a demande. Le reviewer qui
+    approuvait se retrouve avec une pull request modifiee sous les yeux, et
+    l'historique accuse une demande qui n'existe pas. C'est le genre d'erreur
+    qu'on ne voit qu'apres avoir ecrit dans l'historique de quelqu'un.
+
+    Le controle ne lit QUE le `if:` du job, et non le fichier entier. C'est la
+    distinction qui fait tout : le workflow explique dans ses commentaires
+    pourquoi `approved` est ecarte, alors `approved` apparait dans le texte.
+    Chercher dans tout le fichier rendrait ce controle vert meme si la
+    condition ne le mentionnait plus — c'est-a-dire exactement le cas
+    d'usage pour lequel on l'ecrit.
+    """
+    failures: list[str] = []
+    # Les trois etats doivent figurer dans la condition : deux pour agir,
+    # `approved` pour que son exclusion soit un choix lisible.
+    states = ("changes_requested", "commented", "approved")
+
+    for workflow in sorted((root / ".github/workflows").glob("*.yml")):
+        text = workflow.read_text(encoding="utf-8")
+        if "pull_request_review" not in text:
+            continue
+
+        conditions = job_conditions(text)
+        if not conditions:
+            failures.append(
+                f"{workflow.name}: ecoute `pull_request_review` mais aucun job "
+                f"n'a de `if:` — toute revue declenche, approbation comprise."
+            )
+            continue
+
+        condition = "\n".join(conditions)
+        for state in states:
+            if state not in condition:
+                failures.append(
+                    f"{workflow.name}: ecoute `pull_request_review` mais son `if:` "
+                    f"ne nomme pas l'etat `{state}`. Les trois boutons doivent y "
+                    f"figurer : deux pour agir, `approved` pour l'ecarter "
+                    f"explicitement."
+                )
+    return failures
+
+
+def job_conditions(text: str) -> list[str]:
+    """Retourne le corps des `if:` de JOB, indentation du bloc comprise.
+
+    Un `if:` de job est un scalaire plie (`if: >-`) dont la condition continue
+    sur les lignes suivantes, plus-indentees. Lire la seule premiere ligne
+    donnerait un predicat tronque — et donc un controle qui passe sur une
+    condition incomplete.
+
+    Distinguer un `if:` de job d'un `if:` d'etape par l'indentation est
+    fragile : ici le premier est a 4 et le second a 8, mais rien n'oblige un
+    workflow a garder cette mise en page. On remonte donc jusqu'a la ligne
+    mere moins-indentee : si c'est une cle (`fix:`), le `if:` est bien un
+    enfant direct du job ; si c'est une puce (`- name:`), c'est une etape.
+    """
+    lines = text.split("\n")
+    blocks: list[str] = []
+    for index, line in enumerate(lines):
+        match = re.match(r"^(\s*)if:\s*(.*)$", line)
+        if not match:
+            continue
+        indent, rest = len(match.group(1)), match.group(2)
+        if rest not in (">-", "|", ">- ", "| "):
+            continue
+
+        # Remontee vers la cle mere.
+        parent = None
+        for back in range(index - 1, -1, -1):
+            candidate = lines[back]
+            if not candidate.strip():
+                continue
+            if len(candidate) - len(candidate.lstrip()) < indent:
+                parent = candidate.strip()
+                break
+        if parent is None or parent.startswith("-") or ":" not in parent:
+            continue
+
+        body = [line]
+        for follow in lines[index + 1:]:
+            if not follow.strip():
+                body.append(follow)
+                continue
+            if len(follow) - len(follow.lstrip()) <= indent:
+                break
+            body.append(follow)
+        blocks.append("\n".join(body))
+    return blocks
+
+
 def main(argv: list[str]) -> int:
     root = pathlib.Path(argv[1]) if len(argv) > 1 else pathlib.Path(".github/workflows")
     workflows = sorted(root.glob("*.yml")) + sorted(root.glob("*.yaml"))
@@ -463,12 +563,13 @@ def main(argv: list[str]) -> int:
     models = check_models(repo_root)
     prompts = check_prompt_placeholders(repo_root)
     invocations = check_agent_invocations(repo_root)
+    human_review = check_human_review_trigger(repo_root)
 
     total = sum(len(inline_scripts(w)) for w in workflows)
     if (shell or api or shadowed or order or guarded or agents or models
-            or prompts or invocations):
+            or prompts or invocations or human_review):
         for line in (shell + api + shadowed + order + guarded + agents + models
-                     + prompts + invocations):
+                     + prompts + invocations + human_review):
             print(f"  ✗    {line}", file=sys.stderr)
         print(
             f"\n{len(shell)} bloc(s) shell invalide(s), "
@@ -479,7 +580,8 @@ def main(argv: list[str]) -> int:
             f"{len(agents)} agent(s) invalide(s), "
             f"{len(models)} modele(s) invalide(s), "
             f"{len(prompts)} placeholder(s) de prompt non alimente(s), "
-            f"{len(invocations)} invocation(s) d'agent invalide(s)",
+            f"{len(invocations)} invocation(s) d'agent invalide(s), "
+            f"{len(human_review)} declencheur(s) de revue humaine invalide(s)",
             file=sys.stderr,
         )
         return 1
@@ -488,6 +590,7 @@ def main(argv: list[str]) -> int:
     print("  ok   modeles : provider declare dans opencode.json")
     print("  ok   prompts : chaque placeholder recoit une valeur")
     print("  ok   invocations : chaque agent factory-* passe par opencode run")
+    print("  ok   revue humaine : approbation explicitement ecartee")
     print("  ok   github-script : aucun global fourni par l action redeclare")
     return 0
 

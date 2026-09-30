@@ -27,6 +27,17 @@ name: Factory Fix
 on:
   pull_request:
     types: [labeled]
+  # Troisieme voie d'entree, et la seule qu'un humain ne peut pas contourner :
+  # un evenement emis par un humain est toujours livre, alors que ceux du
+  # GITHUB_TOKEN sont ignores (hors `workflow_dispatch` et
+  # `repository_dispatch`). Aucune etiquette n'est donc necessaire pour qu'une
+  # revue humaine declenche une correction.
+  #
+  # `submitted` couvre les trois boutons de la revue — « Request changes »,
+  # « Approve » et « Comment ». Le filtre est dans le `if` du job : un
+  # approbation ne demande aucune correction et ne doit rien lancer.
+  pull_request_review:
+    types: [submitted]
   # Deuxieme voie d'entree, et c'est elle qu'utilise la revue. Ni
   # `pull_request: labeled` ni `workflow_run` ne conviennent : un evenement
   # produit par le GITHUB_TOKEN ne declenche pas de run, sauf
@@ -55,6 +66,13 @@ env:
   # derniere version, qui peut casser la frontmatter d\'un agent.
   OPENCODE_VERSION: "1.18.33"
   NEEDS_FIX_LABEL: factory/needs-fix
+  # Meme plafond que la revue automatique (factory-review.yml). Il compte les
+  # corrections automatiques ET humaines : c'est le meme compteur
+  # `factory/attempt-N` sur la pull request, donc une pull request deja
+  # corrigee deux fois n'est plus retouchee, quelle que soit l'origine de la
+  # demande.
+  MAX_ATTEMPTS: "2"
+  ESCALATE_LABEL: factory/escalade
 
 jobs:
   fix:
@@ -62,18 +80,38 @@ jobs:
     # Sur l'etiquette, on refuse les forks comme sur les autres workflows. Sur le
     # dispatch, l'entree ne porte qu'un numero : le controle de la branche est
     # fait plus bas, depuis l'API, une fois le numero resolu.
+    #
+    # Sur la revue humaine, meme refus de fork, et deux filtres :
+    #   - « Approve » ne demande aucune correction. L'evenement est bien livre
+    #     pour les trois boutons, le tri se fait donc ici. L'etat `approved` est
+    #     ecarte explicitement *et* les deux autres sont nommes : la double
+    #     condition est redondante, et c'est volontaire. Une liste blanche
+    #     seule passerait pour un oubli six mois plus tard, le jour ou
+    #     quelqu'un la remplacerait par `!= 'changes_requested'` en oubliant que
+    #     le bouton « Comment » demande aussi une action. Le controle
+    #     `check_human_review_trigger` de workflow-check.py exige les trois etats
+    #     nommes.
+    #   - le robot est exclu par prudence. Il ne depose aujourd'hui que des
+    #     commentaires, pas des revues, donc la branche est inactive ; elle
+    #     protege le jour ou l'usine commencerait a rendre des revues formelles.
     if: >-
       (github.event_name == 'pull_request' &&
        github.event.label.name == 'factory/needs-fix' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'pull_request_review' &&
+       github.event.review.state != 'approved' &&
+       (github.event.review.state == 'changes_requested' ||
+        github.event.review.state == 'commented') &&
+       github.event.review.user.login != 'github-actions[bot]' &&
        github.event.pull_request.head.repo.full_name == github.repository) ||
       github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, ha-factory]
     timeout-minutes: 45
     steps:
-      # Les deux declencheurs ne portent pas la meme charge utile : l'un a
-      # `pull_request`, l'autre `inputs`. On resout donc ici, une fois, le
-      # numero, la branche et le nombre d'essais, et les etapes suivantes
-      # n'utilisent plus que ces sorties.
+      # Les trois declencheurs ne portent pas la meme charge utile : l'un a
+      # `pull_request`, l'autre `review`, le dernier `inputs`. On resout donc ici,
+      # une fois, le numero, la branche et le nombre d'essais, et les etapes
+      # suivantes n'utilisent plus que ces sorties.
       - name: Resoudre la pull request et ses essais
         id: resolve
         uses: actions/github-script@v7
@@ -99,39 +137,131 @@ jobs:
             core.setOutput('head_ref', data.head.ref);
             core.setOutput('base_ref', data.base.ref);
             core.setOutput('attempts', String(attempts));
-            core.info(`PR #${pr} (${data.head.ref}), ${attempts} essai(s) deja fait(s).`);
+            core.setOutput('review_id', String(context.payload.review?.id ?? ''));
+            // Une revue humaine et le verdict automatique ne se traitent pas de
+            // la meme facon : l'un a un corps et des commentaires en ligne a
+            // lire, l'autre un commentaire a retrouver. L'etape suivante se
+            // base sur cette sortie plutot que sur le nom de l evenement, qui
+            # n'est plus disponible apres.
+            core.setOutput('source',
+              context.eventName === 'pull_request_review' ? 'review' : 'verdict');
+            core.info(`PR #${pr} (${data.head.ref}), ${attempts} essai(s) deja fait(s), `
+              + `source ${context.eventName === 'pull_request_review' ? 'revue humaine' : 'verdict'}.`);
+
+            # Le plafond n'est applique que par la revue automatique, qui
+            // verifie ses tentatives avant de dispatcher. Une revue humaine
+            # n'a pas de dispatcher : c'est GitHub qui livre l evenement, et
+            # rien n'arreterait une pull request ou un humain reclique « Request
+            # changes » apres chaque passage. Le meme plafond s'applique donc
+            # ici, sur le meme compteur, et l'escalade prend le relais.
+            if (context.eventName === 'pull_request_review'
+                && attempts >= Number(process.env.MAX_ATTEMPTS)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: pr, labels: [process.env.ESCALATE_LABEL],
+              });
+              core.warning(`${attempts} correction(s) deja faite(s) : `
+                + 'revue humaine laissee a la main, escalade posee.');
+              core.setOutput('skip', 'true');
+            }
 
       - name: Checkout la branche de la pull request
+        # Le garde de `skip` est repris sur chaque etape qui touche la
+        # branche. Il n'y a pas de `skip` sur ce trigger seul : un plafond
+        # atteint doit laisser la pull request intacte, et un checkout
+        # suivi d'un agent quand meme retraiterait la branche pour rien.
+        if: steps.resolve.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           persist-credentials: false
           ref: ${{ steps.resolve.outputs.head_ref }}
           fetch-depth: 0
 
+      # Chaque source de retour a sa maniere de le lire, et les deux se
+      # ressemblent assez pour que le melange passe inapercu :
+      #   - le verdict automatique est un COMMENTAIRE de conversation, retrouve
+      #     par `VERDICT: BLOQUANT` ;
+      #   - la revue humaine est un objet REVIEW, dont le corps ne porte aucun
+      #     marqueur, et dont les points sont le plus souvent dans des
+      #     commentaires de revue en ligne — c'est-a-dire attaches a des
+      #     lignes de fichiers, absents du corps.
+      # Lire l'un a la place de l'autre echouerait silencieusement, dans les
+      # deux sens.
       - name: Preparer le prompt de correction
         id: prompt
+        if: steps.resolve.outputs.skip != 'true'
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
+            const read = (name) => fs.readFileSync(`.github/prompts/${name}`, 'utf8');
+            // Les jetons sont ecrits en toutes lettres, et nommes un par un,
+            // plutot que deduits d'un objet `vars`. Un remplissage generique
+            // ferait passer le controle de placeholders de workflow-check.py
+            // au vert sans rien garantir : ajouter un `{{NOUVEAU}}` a un prompt
+            // et oublier de l'alimenter serait invisible, et l'agent recevrait
+            // le litteral. Le controle existe precisement pour attraper cela ;
+            // on ne le contourne pas en factorisant.
+            //
+            // Remplacement via fonction : sinon String.replace interprete les
+            // motifs $&, $` et $' dans le corps de la revue, et le prompt
+            // recu par l agent ne correspondrait plus au commentaire publie.
+            const fill = (tpl, pairs) => pairs.reduce((acc, [token, value]) =>
+              acc.replace(token, () => value), tpl);
+
+            if (process.env.SOURCE === 'review') {
+              const reviewId = Number(process.env.REVIEW_ID);
+              // Le corps peut legitimement etre vide : un reviewer peut ne
+              // laisser que des commentaires de ligne. Ce n'est pas une erreur,
+              // et c'est meme le cas le plus courant pour une revue faite
+              // ligne a ligne. On ne demande le corps que s'il existe.
+              const { data: review } = await github.rest.pulls.getReview({
+                owner: context.repo.owner, repo: context.repo.repo,
+                pull_number: Number(process.env.PR_NUMBER), review_id: reviewId,
+              });
+              // Les commentaires en ligne sont ce que le reviewer a ecrit sur
+              // des lignes precises : sans eux, l'agent ne verrait qu'un
+              // « corriger ces points » sans aucun point. `fetchAll` parce
+              // qu'ils sont pagines a 30 par page.
+              const threads = await fetchAll(github.rest.pulls.listReviewComments, {
+                owner: context.repo.owner, repo: context.repo.repo,
+                pull_number: Number(process.env.PR_NUMBER), review_id: reviewId,
+              });
+              const rendered = threads.map(t => {
+                const path = t.path ?? '';
+                const line = (t.line ?? t.original_line ?? 0);
+                return `- \`${path}:${line}\`\n  ${(t.body ?? '').trim()}`;
+              });
+              core.setOutput('body', fill(read('address.md'), [
+                ['{{REVIEW_BODY}}', (review.body ?? '').trim()
+                  || '_Aucun commentaire general ; tout est dans les points ci-dessous._'],
+                ['{{REVIEW_THREADS}}', rendered.length
+                  ? rendered.join('\n')
+                  : '_Aucun commentaire de ligne._'],
+              ]));
+              core.info(`${rendered.length} commentaire(s) de ligne, `
+                + `corps ${review.body?.trim() ? 'present' : 'vide'}.`);
+              return;
+            }
+
             const pr = { owner: context.repo.owner, repo: context.repo.repo,
                          issue_number: Number(process.env.PR_NUMBER) };
-            const { fetchAll } = require('./.github/scripts/gh-pages.cjs');
             const comments = await fetchAll(github.rest.issues.listComments, pr);
             const last = comments[comments.length - 1];
             if (!last || !(last.body ?? '').includes('VERDICT: BLOQUANT')) {
               core.setFailed('Aucun commentaire de revue bloquante trouve.');
               return;
             }
-            const template = require('fs').readFileSync('.github/prompts/fix.md', 'utf8');
-            // Remplacement via fonction : sinon String.replace interprete les
-            // motifs $&, $` et $' dans le corps de la revue, et le prompt
-            // recu par l agent ne correspondrait plus au commentaire publie.
-            const value = template.replace('{{REVIEW_BODY}}', () => last.body ?? '');
-            core.setOutput('body', value);
+            core.setOutput('body', fill(read('fix.md'), [
+              ['{{REVIEW_BODY}}', last.body ?? ''],
+            ]));
         env:
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
-
+          REVIEW_ID: ${{ steps.resolve.outputs.review_id }}
+          SOURCE: ${{ steps.resolve.outputs.source }}
       - name: Installer opencode
+        if: steps.resolve.outputs.skip != 'true'
         id: install
         run: |
           set -euo pipefail
@@ -143,6 +273,7 @@ jobs:
       # runner : elles viennent de son /etc/ha-factory/runner.env, pas des
       # secrets GitHub.
       - name: Installer les validateurs
+        if: steps.resolve.outputs.skip != 'true'
         # L etape de validation appelle yamllint par son nom, et le runner n en
         # a pas : sans cela, exec.getExecOutput leve une erreur peu parlante
         # ("Unable to locate executable file").
@@ -196,6 +327,7 @@ jobs:
           echo "validateur pret"
 
       - name: Corriger avec l'agent
+        if: steps.resolve.outputs.skip != 'true'
         env:
           PROMPT_BODY: ${{ steps.prompt.outputs.body }}
         run: |
@@ -206,6 +338,7 @@ jobs:
             "$PROMPT_BODY" 2>&1 | tee agent-output.log
 
       - name: Verifier et pousser les corrections
+        if: steps.resolve.outputs.skip != 'true'
         uses: actions/github-script@v7
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -214,6 +347,7 @@ jobs:
           # numero resolu plus haut.
           PR_NUMBER: ${{ steps.resolve.outputs.pr }}
           HEAD_REF: ${{ steps.resolve.outputs.head_ref }}
+          SOURCE: ${{ steps.resolve.outputs.source }}
         with:
           script: |
             // `issues.addLabels` et `issues.removeLabel` attendent `issue_number`.
@@ -302,8 +436,14 @@ jobs:
             // partirait dans la pull request.
             if (!await must(['reset', '-q', 'agent-output.log'],
               'git reset a echoue.')) { return; }
+            // Le message dit d'ou vient la correction. Un historique qui ne
+            // dit que « revue automatique » devient faux des la premiere
+            // correction demandee par un humain, et ne distingue plus les deux
+            // origines quand on cherche pourquoi un fichier a change.
+            const origin = process.env.SOURCE === 'review'
+              ? 'retours de revue humaine' : 'revue automatique';
             if (!await must(gitAs('commit', '-m',
-              `fix: corrections de la revue automatique (essai ${attempts})`),
+              `fix: corrections des ${origin} (essai ${attempts})`),
               'Le commit a echoue.')) { return; }
             const push = await pushBranch(`HEAD:${process.env.HEAD_REF}`);
             core.info(push.stdout);
@@ -317,6 +457,50 @@ jobs:
               name: process.env.NEEDS_FIX_LABEL }).catch(() => {});
             await github.rest.issues.addLabels({ ...pr,
               labels: [`factory/attempt-${attempts}`] });
+
+            // Une correction demandee par un humain se termine sur un silence
+            // sans le faire : le push fait relancer la revue automatique, et
+            // l'auteur voit un commit et zero explication. Ce commentaire sert
+            // de reponse au reviewer, et il reprend son recapitulatif — ou
+            // dit franchement qu'un point n'a pas ete traite.
+            //
+            // Il ne contient ni `VERDICT:` ni le lien de run que la revue
+            // automatique cherche : `Preparer le prompt de correction` retrouve
+            // le dernier commentaire portant `VERDICT: BLOQUANT`, et
+            // `Appliquer le verdict` ne retient que le commentaire de SON run.
+            // Un resume de correction qui pariait l'un des deux pourrait faire
+            // passer le prochain run pour un verdict.
+            if (process.env.SOURCE === 'review') {
+              const { stripTrace } = require('./.github/scripts/strip-agent-trace.cjs');
+              // Le recapitulatif de l'agent est de la donnee libre : il peut
+              // citer la revue qu'il a lue, donc `VERDICT: BLOQUANT` si le
+              // correcteur automatique avait correle avant lui. On retire ces
+              // lignes plutot que de croire l'agent sur ce point : c'est ce
+              // marqueur que l'etape de preparation cherche, et un resume qui
+              // le porterait deviendrait, au tour suivant, la source des
+              // corrections.
+              const summary = stripTrace(require('fs').readFileSync('agent-output.log', 'utf8'))
+                .split('\n')
+                .filter(l => !/VERDICT:/.test(l))
+                .join('\n')
+                .trim();
+              await github.rest.issues.createComment({
+                ...pr,
+                body: [
+                  '## Corrections de la revue humaine',
+                  '',
+                  'Un correcteur automatique a repris les retours ci-dessus. '
+                  + 'Ces corrections sont poussees, la revue automatique les relira au prochain commit.',
+                  '',
+                  summary || '_L agent n a rien rendu._',
+                  '',
+                  '---',
+                  '',
+                  `*Run \\`${process.env.GITHUB_RUN_ID}\\`.*`,
+                ].join('\n'),
+              });
+              core.info('Reponse publiee sur la pull request.');
+            }
 
             // Aucune relance de la revue ici. Le push ci-dessus declenche bien
             // `pull_request: synchronize` : le run 36621537561 s'est ouvert sur

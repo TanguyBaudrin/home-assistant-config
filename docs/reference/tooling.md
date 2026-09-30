@@ -67,7 +67,7 @@ requests and **never merges anything**: a human merges, always.
 | --- | --- | --- | --- |
 | `factory-spec.yml` | `issues: opened`, or a human comment | self-hosted | Drafts an implementation plan as an issue comment |
 | `factory-review.yml` | `pull_request` | self-hosted | Read-only review, posts a verdict |
-| `factory-fix.yml` | label `factory/needs-fix` | self-hosted | Applies the blocking fixes, pushes to the PR branch |
+| `factory-fix.yml` | label `factory/needs-fix`, or a human review | self-hosted | Applies the blocking fixes, pushes to the PR branch |
 | `factory-build.yml` | label `to-implement` on an issue | self-hosted | Turns a validated plan into a pull request |
 | `factory-migrate.yml` | nightly 03:17 UTC | self-hosted | Migrates one legacy automation per night |
 | `factory-docs.yml` | weekly, Sunday 04:23 UTC | self-hosted | Documentation refresh, only if config changed |
@@ -242,10 +242,55 @@ promises a tool the agent cannot have.
 - The review/fix loop is bounded: `factory-fix` increments
   `factory/attempt-N`, and the reviewer stops labelling after 2 attempts and
   adds `factory/escalade` instead.
+- A human review is bounded by the same counter. The automatic loop has a
+  dispatcher that checks the count before starting; a human review has none,
+  because GitHub delivers the event directly, so `factory-fix` applies the
+  ceiling itself. Past the limit it adds `factory/escalade` and leaves the pull
+  request alone.
 - Migration is bounded by `max_attempts` in `factory/queue.yaml`, and an entry
   with an open pull request is never selected again.
 - Per-PR concurrency uses `cancel-in-progress: true`; a new push supersedes an
   in-flight review.
+
+### Human review feedback
+
+`factory-fix.yml` has three triggers, and the third is the one that carries a
+person rather than the factory:
+
+| Trigger | Feedback source | How it is read |
+| --- | --- | --- |
+| label `factory/needs-fix` | automatic verdict | last comment containing `VERDICT: BLOQUANT` |
+| `workflow_dispatch` | automatic verdict | same |
+| `pull_request_review` | human review | the review body, plus `listReviewComments` for the inline comments |
+
+The inline comments matter more than they look. A reviewer working line by
+line leaves a review whose body is often empty or one line long, with the
+actual points attached to specific lines — so reading only the body would
+hand the agent "fix these points" with no points. The body is also allowed to
+be empty without that being an error, which is the common case.
+
+`changes_requested` and `commented` both act. `approved` is excluded, and
+excluded *by name* rather than by omission: `check_human_review_trigger` in
+`workflow-check.py` requires all three states to appear in the job's `if:`, so
+a future edit that swaps the whitelist for a blacklist without mentioning
+`approved` fails the check instead of quietly rewriting a pull request someone
+had just approved.
+
+Two things differ from the automatic path, deliberately:
+
+- The prompt is `address.md`, not `fix.md`. Human feedback is not a defect
+  report. "This is too long" and "I prefer the old wording" are requests the
+  agent must obey even though the code was correct, while a request that
+  looks like a misreading of the file must be reported rather than satisfied
+  by inventing a problem.
+- The push is answered with a comment summarising what was done. The automatic
+  path has the reviewer re-read the next commit; a human asking for a change
+  would otherwise just see a commit appear.
+
+The review text is untrusted input: it comes from a pull request conversation,
+where anyone can write. `address.md` marks it as data and states that
+instructions outside the scope of a configuration change are reported, not
+followed.
 
 ### Local checks before trusting a workflow change
 
