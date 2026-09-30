@@ -314,41 +314,11 @@ jobs:
             // appel d'outil (`Read automations/...`, `Glob ... 20 matches`).
             // Au run 36673827000 ces lignes faisaient 1189 caracteres sur 3066,
             // soit 38% du commentaire publie, et la vraie revue arrivait en
-            // troisieme.
-            //
-            // On ne peut pas tronquer a partir du VERDICT : le verdict est la
-            // derniere ligne, on perdrait tout le rapport.
-            //
-            // La trace est un bloc continu qui precede le rapport, et chaque
-            // ligne y nomme un outil derriere un glyphe d'activite. On la
-            // supprime donc en tete de sortie, tant qu'on la reconnait — et on
-            // s'arrete au premier signe de rapport, des qu'un titre Markdown,
-            // un VERDICT, ou deux lignes de texte suivi, le signalent. Une
-            // puce de rapport (`* point`) ne nomme pas d'outil et ne declenche
-            // donc rien, contrairement a un motif trop permissif.
-            const ANSI = String.fromCharCode(27);
-            const ansiRe = new RegExp(`${ANSI}\\[[0-9;]*[A-Za-z]`, 'g');
-            const stripAnsi = (s) => s.replace(ansiRe, '');
-            const TOOL = /\b(?:Read|Write|Edit|Glob|Grep|List|Bash|WebFetch|Task)\b/;
-            const lines = raw.split('\n');
-            let i = 0;
-            for (; i < lines.length; i++) {
-              const bare = stripAnsi(lines[i]);
-              if (!bare.trim()) continue;                 // lignes vides : transparent
-              if (/^\s*(?:#{1,6}\s|\*\*VERDICT)/.test(bare)) break;  // debut du rapport
-              // La puce Markdown est testee AVANT le nom d'outil. Dans l'ordre
-              // inverse, une puce de rapport qui cite `Read automations/x.yaml`
-              // — ce que fait un relecteur, puisque le rapport cite
-              // `fichier:ligne` — etait supprimee comme si c'etait de la trace.
-              if (/^\s*[*+-]\s/.test(bare)) break;         // puce de rapport
-              if (TOOL.test(bare)) continue;              // ligne de trace
-              if (/^\s*(?:>|→|⇒|✱|✔|✖|·)\s*\S/.test(bare)) continue;  // titre de trace
-              break;                                      // texte courant
-            }
-            const report = lines.slice(i).join('\n');
-            // Les codes d'echappement restants sont du bruit de terminal dans
-            // un commentaire GitHub.
-            const clean = report.replace(ansiRe, '').replace(/^\n+/, '').trim();
+            // troisieme. La separation est faite par `strip-agent-trace.cjs`,
+            // partage avec factory-spec.yml et couvert par un test : le
+            // commentator sur ce point qui a decide de la methode.
+            const { stripTrace } = require('./.github/scripts/strip-agent-trace.cjs');
+            const clean = stripTrace(raw);
 
             if (!clean || !/VERDICT:/.test(clean)) {
               await github.rest.issues.createComment({

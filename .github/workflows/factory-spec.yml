@@ -293,10 +293,19 @@ jobs:
           script: |
             const pr = { ...context.repo, issue_number: Number(process.env.ISSUE_NUMBER) };
             const output = require('fs').readFileSync('agent-output.log', 'utf8');
-            // Le plan est le texte libre de l'agent. On ne prend que la fin :
-            // l'agent bavearde avant, et un plan noyé dans le journal de run
-            // n'est plus lisible ni relisible.
-            const plan = output.slice(-6000).trim();
+            // L'agent bavearde avant de rendre son plan : titre
+            // `> factory-spec · modele`, puis une ligne par appel d'outil. Cette
+            // trace atterrissait dans le commentaire de l'issue #9, parce que
+            // `output.slice(-6000)` etait un no-op des que la sortie faisait
+            // moins de 6000 caracteres — c'est-a-dire presque toujours.
+            //
+            // Le `slice` etait de surcroit une troncature par la fin : sur un
+            // plan long, elle coupait le debut en plein milieu d'une section,
+            // ce qui est exactement le defaut deja corrige sur le plan de build
+            // (run 36669400875). `stripTrace` retire la trace sans borner la
+            // longueur du plan, et est partage avec factory-review.yml.
+            const { stripTrace } = require('./.github/scripts/strip-agent-trace.cjs');
+            const plan = stripTrace(output);
             if (!plan) {
               await core.setFailed('L\'agent n\'a produit aucun plan.');
               return;

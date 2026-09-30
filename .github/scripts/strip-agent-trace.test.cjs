@@ -20,35 +20,8 @@
 const fs = require("fs");
 const path = require("path");
 
+const { stripTrace } = require("./strip-agent-trace.cjs");
 const ANSI = String.fromCharCode(27);
-const ansiRe = new RegExp(`${ANSI}\\[[0-9;]*[A-Za-z]`, "g");
-const stripAnsi = (s) => s.replace(ansiRe, "");
-const TOOL = /\b(?:Read|Write|Edit|Glob|Grep|List|Bash|WebFetch|Task)\b/;
-
-// Copie de l'algorithme du workflow.
-function stripTrace(raw) {
-  const lines = raw.split("\n");
-  let i = 0;
-  while (i < lines.length) {
-    const bare = stripAnsi(lines[i]);
-    if (!bare.trim()) {
-      i += 1;
-      continue;
-    }
-    if (/^\s*(?:#{1,6}\s|\*\*VERDICT)/.test(bare)) break;
-    if (/^\s*[*+-]\s/.test(bare)) break;
-    if (TOOL.test(bare)) {
-      i += 1;
-      continue;
-    }
-    if (/^\s*(?:>|→|⇒|✱|✔|✖|·)\s*\S/.test(bare)) {
-      i += 1;
-      continue;
-    }
-    break;
-  }
-  return stripAnsi(lines.slice(i).join("\n")).replace(/^\n+/, "").trim();
-}
 
 const TRACE = [
   `${ANSI}[0m`,
@@ -105,6 +78,27 @@ const cases = [
     expect: REPORT,
   },
   {
+    // Le cas reel de l'issue #9 : `slice(-6000)` avait coupe le debut de la
+    // ligne, laissant `. · 100 matches` sans nom d'outil. Sans ce cas, la trace
+    // survivait en tete du plan publie.
+    name: "une ligne de trace amputee de son debut est retiree",
+    raw: ". · 100 matches\n## Plan\n\n**Termine.**",
+    expect: "## Plan\n\n**Termine.**",
+  },
+  {
+    // Cas reel de l'issue #9 : un `Read` hors perimetre a laisse une ligne
+    // `Error:` suivie du JSON des permissions, au milieu du bloc de trace.
+    name: "un refus d'outil est retire",
+    raw: [
+      "\u001b[0m> factory-review \u00b7 m",
+      "Error: The user has specified a rule which prevents you from using this specific tool call. Here are some of the relevant rules [{\"permission\":\"*\"}]",
+      "## Plan",
+      "",
+      "**Termine.**",
+    ].join("\n"),
+    expect: "## Plan\n\n**Termine.**",
+  },
+  {
     name: "une sortie vide ne produit rien",
     raw: "",
     expect: "",
@@ -126,16 +120,33 @@ for (const { name, raw, expect } of cases) {
 
 // Le workflow doit contenir le meme algorithme : une divergence silencieuse
 // laisserait le test vert sur un workflow qui, lui, ne nettoie plus rien.
-const workflow = fs.readFileSync(
-  path.join(__dirname, "..", "workflows", "factory-review.yml"),
-  "utf8",
-);
-for (const marker of ["stripAnsi", "TOOL.test(bare)", "lines.slice(i).join"]) {
-  if (workflow.includes(marker)) {
-    console.log(`  ok   le workflow reprend bien « ${marker} »`);
-  } else {
+for (const workflowName of ["factory-review.yml", "factory-spec.yml"]) {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, "..", "workflows", workflowName),
+    "utf8",
+  );
+  // Ni trace inline, ni troncature par la fin : les deux ont produit un
+  // commentaire illisible sur les runs 36673827000 et 36674475291.
+  if (!workflow.includes("stripTrace(")) {
     failures += 1;
-    console.error(`  FAIL le workflow ne contient plus « ${marker} »`);
+    console.error(`  FAIL ${workflowName} n'appelle pas stripTrace()`);
+  } else {
+    console.log(`  ok   ${workflowName} appelle stripTrace()`);
+  }
+  // Ni trace inline, ni troncature par la fin. La recherche porte sur le code
+  // seul : un `slice(-6000)` cite dans un commentaire n'a rien de suspect, et
+  // le confondre avec un vrai troncement rendrait le test bruyant.
+  const code = workflow
+    .split("\n")
+    .filter((l) => !/^\s*(?:#|\/\/)/.test(l))
+    .join("\n");
+  for (const banned of ["slice(-", "lastIndexOf"]) {
+    if (code.includes(banned)) {
+      failures += 1;
+      console.error(`  FAIL ${workflowName} tronque encore en \`${banned}\``);
+    } else {
+      console.log(`  ok   ${workflowName} ne tronque pas en \`${banned}\``);
+    }
   }
 }
 
