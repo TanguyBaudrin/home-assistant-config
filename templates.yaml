@@ -461,6 +461,12 @@
         {{- today_at(states('input_datetime.heure_de_reveil_de_la_maison')) <= now() and
         as_datetime([as_timestamp(as_datetime(state_attr("sun.sun", "next_dusk"))),
         as_timestamp(today_at("22:00"))] | min) >= utcnow() -}}
+    - name: "Tanguy travaille à la maison"
+      unique_id: tanguy_travaille_a_la_maison
+      state: >-
+        {{- is_state('calendar.tanguy', 'on')
+            and ("non travaillé" not in (state_attr("calendar.tanguy", "message") | default("") | lower))
+            and is_state("person.tanguy_baudrin", "home") -}}
 
 - sensor:
     - name: "Azimuth soleil"
