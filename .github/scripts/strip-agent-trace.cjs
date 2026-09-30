@@ -44,6 +44,13 @@ const DANGLING = /·\s*\d+\s+matches?\s*$/;
 // ne commence pas par `Error:`, donc le motif se suffit a lui-meme.
 const TOOL_ERROR = /^\s*(?:\^)?Error:\s/;
 
+// Un appel d'outil refuse est rendu sur deux lignes : un titre `✗ Invalid
+// Tool`, puis le motif sur la ligne suivante, sans glyphe. La seconde ligne
+// echapperait donc au test de glyphe et arreterait la lecture. C'est la seule
+// ligne de trace qui ne commence pas par un glyphe, et elle est en anglais
+// contrairement au rapport, qui est en francais.
+const TOOL_REFUSED = /^The arguments provided to the tool are invalid:/;
+
 // Retourne le rapport seul : ni trace, ni refus d'outil, ni codes
 // d'echappement, ni lignes vides en tete. Renvoie une chaine vide si la sortie
 // ne contenait que de la trace.
@@ -62,11 +69,11 @@ function stripTrace(raw) {
     }
     if (/^\s*(?:#{1,6}\s|\*\*VERDICT)/.test(bare)) break;
     if (/^\s*[*+-]\s/.test(bare)) break;
-    if (TOOL_ERROR.test(bare) || TOOL.test(bare) || DANGLING.test(bare)) {
+    if (TOOL_ERROR.test(bare) || TOOL_REFUSED.test(bare) || TOOL.test(bare) || DANGLING.test(bare)) {
       i += 1;
       continue;
     }
-    if (/^\s*(?:>|→|⇒|✱|✔|✖|·)\s*\S/.test(bare)) {
+    if (/^\s*(?:>|→|⇒|✱|✔|✖|✗|·)\s*\S/.test(bare)) {
       i += 1;
       continue;
     }

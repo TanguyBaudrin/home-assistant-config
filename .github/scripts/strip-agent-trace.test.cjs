@@ -112,6 +112,21 @@ const cases = [
     expect: "## Plan\n\n**Termine.**",
   },
   {
+    // Troisieme forme reelle sur l'issue #9 : l'agent a appele `bash`, que sa
+    // configuration lui refuse. Le refus tient sur deux lignes, la seconde
+    // sans glyphe — c'est elle qui arretait la lecture.
+    name: "un outil refuse sur deux lignes est retire",
+    raw: [
+      "\u2717 Invalid Tool",
+      "The arguments provided to the tool are invalid: Model tried to call unavailable tool 'bash'.",
+      "\u2192 Read automations/global/heatwave.yaml",
+      "## Plan",
+      "",
+      "**Termine.**",
+    ].join("\n"),
+    expect: "## Plan\n\n**Termine.**",
+  },
+  {
     name: "une sortie vide ne produit rien",
     raw: "",
     expect: "",
