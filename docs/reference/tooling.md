@@ -146,8 +146,8 @@ can open an issue but only someone with write access can label it.
 issue opened
   -> factory-spec.yml   drafts a plan as a comment
   -> human comment      a new plan is drafted from the feedback
-  -> to-implement       the plan is approved
-  -> factory-build.yml  the pull request is opened
+  -> to-implement       a human approves the plan
+  -> factory-build.yml  implements the plan, and opens a pull request
 ```
 
 The plan phase exists because `factory-build` never asks a question: on an
@@ -160,6 +160,33 @@ first costs one comment.
 Iteration is driven by comments. The workflow skips bot comments, and skips an
 issue that already has a plan with no human reply, so the plan the agent posts
 cannot trigger another plan.
+
+### The plan is the spec, not the issue
+
+
+`factory-build` receives the approved plan and the original issue, and the
+prompt states which one wins: **the plan**. An issue title is a draft written
+before the need was understood, and nobody rereads it; the plan is the part that
+was corrected and approved.
+
+Issue #3 showed the cost of not doing this. The plan revised "garage" to "salon"
+window and dropped a door condition, and the human said so in a comment. The
+build, receiving only the title, wrote `automations/garage/door.yaml` — a garage
+door. With the plan wired in, the same issue produced
+`automations/salon/volet_nuit.yaml`.
+
+So the build fails rather than guesses when the gate is incomplete:
+
+- `to-implement` absent — nothing authorises writing;
+- no plan comment — an approval that points at nothing is not an approval;
+- the approval event's actor is a bot — the plan is written by a bot by design,
+  the *authorisation* is what must be human, and the journal is where that is
+  proven;
+- the plan is newer than the approval — nobody read it.
+
+The prompt tells the agent not to "cover both versions" when the plan and the
+title disagree. An automation that does more than the plan is unverifiable, and
+was never what was asked for.
 
 ### Why the reviewer uses the action and the fixer uses the CLI
 
