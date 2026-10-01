@@ -27,8 +27,8 @@ total: 34
 max_attempts: 3
 queue:
   - id: 'camera_disconnected'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1700041812633'
     status: done
     attempts: 1
