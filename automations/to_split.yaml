@@ -31,38 +31,6 @@
       title: Caméra déconnectée
       message: La caméra {{ trigger.id }} n'est plus connectée
   mode: single
-- id: '1700041812633'
-  alias: '[Maison] Automatisation sur moins de 10% de batterie sur les caméra'
-  description: ''
-  triggers:
-  - type: battery_level
-    device_id: 69b55e596098bf4d9ff6926fde3b37e2
-    entity_id: 48dc69f0808fe6a975e418f4cb0a96e5
-    domain: sensor
-    below: 10
-    id: abri de jardin
-    trigger: device
-  - type: battery_level
-    device_id: 4af4fafa7852933d37f18426446a3e82
-    entity_id: 4e06bfd72bfd4a955e12d1f118ff6c07
-    domain: sensor
-    id: terrasse
-    below: 10
-    trigger: device
-  - type: battery_level
-    device_id: a7af7b4e2aef8ea17ec6e6e317e856d2
-    entity_id: dea0cb06fff8c475ba7cc05fb4af3da2
-    domain: sensor
-    id: garage côté jardin
-    below: 10
-    trigger: device
-  conditions: []
-  actions:
-  - data:
-      title: Batterie faible
-      message: La caméra {{ trigger.id }} a moins de 10% de batterie
-    action: notify.mobile_app_iphone_pro_de_tanguy
-  mode: single
 - id: '1700051716580'
   alias: '[Zones] Tanguy quitte le travail'
   description: ''
