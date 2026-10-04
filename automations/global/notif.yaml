@@ -1,0 +1,29 @@
+- id: 'auto_global_depart_travail_tanguy'
+  alias: 'Global - Notification - Tanguy quitte son lieu de travail'
+  description: |
+    Envoie une notification sur le téléphone d'Agnès lorsque Tanguy quitte
+    son lieu de travail (SFEIR Lille), uniquement les jours de semaine
+    après 13h. (Migré le 2026-10-04)
+  trigger:
+  - entity_id: person.tanguy_baudrin
+    zone: zone.sfeir_lille
+    event: leave
+    id: sfeir
+    trigger: zone
+  condition:
+  - alias: Les jours de semaine après 13h
+    condition: time
+    after: '13:00:00'
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  action:
+  - action: notify.mobile_app_iphone_de_agnes
+    metadata: {}
+    data:
+      message: Tanguy vient de partir de {{ trigger.id }}
+      title: Tanguy viens de partir
+  mode: single
