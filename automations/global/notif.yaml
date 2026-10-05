@@ -61,4 +61,98 @@
     data:
       message: Tanguy vient de partir de {{ trigger.id }}
       title: Tanguy viens de partir
+- id: 'auto_global_retour_domicile_notification'
+  alias: Global - Notification - Retour à la maison avec notification de fin de cycle
+  description: |
+    Cette automatisation se déclenche lorsqu'Agnès ou Tanguy rentre à la maison.
+    Elle remet le thermostat du séjour en mode « schedule » et envoie une
+    notification personnalisée (selon la personne qui rentre) si la machine à
+    laver ou le sèche-linge sont encore en cycle, puis désactive les indicateurs
+    correspondants. (Migré le 2026-10-05)
+  trigger:
+    - alias: Quand Agnès passe présente
+      entity_id:
+        - person.agnes
+      from: not_home
+      to: home
+      id: Agnes
+      platform: state
+    - alias: Quand Tanguy passe présent
+      entity_id:
+        - person.tanguy_baudrin
+      from: not_home
+      to: home
+      id: Tanguy
+      platform: state
+  condition: []
+  action:
+    - data:
+        preset_mode: schedule
+      target:
+        entity_id: climate.sejour
+      action: climate.set_preset_mode
+    - alias: Envoyer notifications de machine à laver/sèche linge terminé
+      choose:
+        - conditions:
+            - condition: state
+              entity_id: input_boolean.machine_a_laver_a_sortir
+              state: 'on'
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: trigger
+                      id:
+                        - Tanguy
+                  sequence:
+                    - action: notify.mobile_app_iphone_pro_de_tanguy
+                      metadata: {}
+                      data:
+                        message: La machine a laver est terminée
+                        title: Machine à laver
+                - conditions:
+                    - condition: trigger
+                      id:
+                        - Agnes
+                  sequence:
+                    - action: notify.mobile_app_iphone_de_agnes
+                      metadata: {}
+                      data:
+                        message: La machine a laver est terminée
+                        title: Machine à laver
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.machine_a_laver_a_sortir
+        - conditions:
+            - condition: state
+              entity_id: input_boolean.seche_linge_a_sortir
+              state: 'on'
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: trigger
+                      id:
+                        - Tanguy
+                  sequence:
+                    - action: notify.mobile_app_iphone_pro_de_tanguy
+                      metadata: {}
+                      data:
+                        message: La sèche linge est terminé
+                        title: Sèche linge
+                - conditions:
+                    - condition: trigger
+                      id:
+                        - Agnes
+                  sequence:
+                    - action: notify.mobile_app_iphone_de_agnes
+                      metadata: {}
+                      data:
+                        message: La sèche linge est terminé
+                        title: Sèche linge
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.seche_linge_a_sortir
   mode: single
