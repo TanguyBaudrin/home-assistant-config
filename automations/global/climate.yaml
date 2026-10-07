@@ -1,0 +1,31 @@
+- id: 'auto_global_climat_vanves_netatmo_indisponible'
+  alias: Global - Chauffage - Alerte vanne Netatmo indisponible
+  description: >
+    Surveille l'état des vannes Netatmo de la maison et envoie une notification
+    sur l'iPhone de Tanguy lorsqu'une vanne passe à indisponible pendant plus de
+    30 minutes. Déclencheur : changement d'état de climate.netatmo_valve_* vers
+    unavailable. Action : notification mobile avec le nom de la pièce concernée.
+    (Migré le 2026-10-07)
+  trigger:
+    - platform: state
+      entity_id:
+        - climate.netatmo_valve_1
+        - climate.netatmo_valve_2
+        - climate.netatmo_valve_4
+        - climate.netatmo_valve_5
+        - climate.netatmo_valve_6
+        - climate.netatmo_valve_7
+        - climate.netatmo_valve_8
+        - climate.netatmo_valve_9
+      to: unavailable
+      for:
+        hours: 0
+        minutes: 30
+        seconds: 0
+  condition: []
+  action:
+    - service: notify.mobile_app_iphone_pro_de_tanguy
+      data:
+        title: Vanne indisponible
+        message: Une vanne dans {{ area_name(trigger.entity_id) }} n'est plus disponible
+  mode: single
