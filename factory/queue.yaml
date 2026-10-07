@@ -42,8 +42,8 @@ queue:
     status: pending
     attempts: 0
   - id: '1702810071752'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1735821043121'
     status: pending
     attempts: 0
