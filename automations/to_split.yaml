@@ -429,27 +429,6 @@
     controller_id: '{{controller_device}}'
   mode: restart
   max_exceeded: silent
-- id: '1736333581558'
-  alias: Mode - Garage - Commutateur porte de garage - Envoi de la commande à l'interrupteur
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - input_button.bouton_porte_de_garage
-  conditions: []
-  actions:
-  - action: switch.toggle
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.commutateur_porte_de_garage_commutateur
-  - action: switch.toggle
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.commutateur_porte_de_garage_commutateur
-  mode: single
-
 - id: '1736799359847'
   alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
   description: ''
