@@ -14,7 +14,7 @@
 
 - Organize automations by **room/functional area** in subdirectories:
   - `automations/bureau/` (office), `automations/energy/`, `automations/garage/`
-  - `automations/global/` (house-wide), `automations/kitchen/`, `automations/tech/`
+  - `automations/global/` (house-wide), `automations/grenier/`, `automations/kitchen/`, `automations/salon/`, `automations/tech/`
 - Do not duplicate entity definitions.
 
 ## Formatting
