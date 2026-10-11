@@ -450,50 +450,6 @@
       entity_id: switch.commutateur_porte_de_garage_commutateur
   mode: single
 
-- id: '1736799359847'
-  alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite_2
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-    above: 70
-    id: Humidité haute
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite_2
-    id: Humidité basse
-    below: 70
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Humidité haute
-      sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Vitesse 2
-        target:
-          entity_id: input_select.interrupteur_vmc
-    - conditions:
-      - condition: trigger
-        id:
-        - Humidité basse
-      sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Vitesse 1
-        target:
-          entity_id: input_select.interrupteur_vmc
-  mode: single
 - id: '1736933681489'
   alias: Auto - Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
   description: ''
