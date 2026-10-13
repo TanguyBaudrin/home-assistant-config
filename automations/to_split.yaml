@@ -461,59 +461,7 @@
         target:
           entity_id: input_select.interrupteur_vmc
   mode: single
-- id: '1736933681489'
-  alias: Auto - Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
-  description: ''
-  triggers:
-  - trigger: zone
-    entity_id: person.tanguy_baudrin
-    zone: zone.home
-    event: enter
-  conditions:
-  - condition: and
-    conditions:
-    - condition: state
-      entity_id: binary_sensor.porte_de_garage
-      state: 'off'
-    - alias: Tanguy rentre à vélo ou à pied
-      condition: or
-      conditions:
-      - condition: state
-        entity_id: sensor.iphone_pro_de_tanguy_activity
-        state: Cycling
-      - condition: state
-        entity_id: sensor.iphone_pro_de_tanguy_activity
-        state: Walking
-  actions:
-  - action: notify.mobile_app_iphone_pro_de_tanguy
-    metadata: {}
-    data:
-      message: Tanguy rentre à vélo
-      title: Vélo
-  - action: input_button.press
-    metadata: {}
-    data: {}
-    target:
-      entity_id: input_button.bouton_porte_de_garage
-  - action: light.turn_on
-    metadata: {}
-    data: {}
-    target:
-      area_id: garage
-  - delay:
-      hours: 0
-      minutes: 2
-      seconds: 0
-      milliseconds: 0
-  - condition: state
-    entity_id: binary_sensor.porte_de_garage
-    state: 'on'
-  - action: input_button.press
-    metadata: {}
-    data: {}
-    target:
-      entity_id: input_button.bouton_porte_de_garage
-  mode: single
+
 
 - id: '1737633981398'
   alias: Auto - Chambre parents - Apple TV - Mettre en route l'Apple TV lors d'un
