@@ -1,0 +1,19 @@
+- id: 'auto_salon_climat_netatmo_changement_mode'
+  alias: 'Salon - Chauffage - Changement de préréglage Netatmo'
+  description: >-
+    Cette automatisation envoie une notification sur l'iPhone de Tanguy
+    lorsque le préréglage du thermostat Netatmo du salon change, afin de
+    suivre les modifications de mode à distance. (Migré le 2026-10-06)
+  trigger:
+  - platform: state
+    entity_id:
+    - climate.sejour
+    attribute: preset_mode
+  condition: []
+  action:
+  - service: notify.mobile_app_iphone_de_tanguy
+    data:
+      title: Changement de mode Netatmo
+      message: Netatmo passe en mode {{ state_attr('climate.sejour', 'preset_mode')
+        }}
+  mode: single
