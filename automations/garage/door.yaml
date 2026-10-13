@@ -1,0 +1,62 @@
+- id: 'auto_garage_porte_arrivee_tanguy'
+  alias: Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
+  description: >-
+    Lorsque Tanguy rentre à la maison à vélo ou à pied et que la porte de garage
+    est fermée, cette automatisation envoie une notification, appuie sur le
+    bouton d'ouverture de la porte de garage, allume les lumières du garage,
+    attend deux minutes, puis vérifie si la porte s'est ouverte. Si ce n'est
+    pas le cas, elle rappelle l'appui sur le bouton.
+    (Migré le 2026-10-13)
+  trigger:
+  - platform: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: enter
+  condition:
+  - condition: and
+    conditions:
+    - condition: state
+      entity_id: binary_sensor.porte_de_garage
+      state: 'off'
+    - alias: Tanguy rentre à vélo ou à pied
+      condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.iphone_pro_de_tanguy_activity
+        state: Cycling
+      - condition: state
+        entity_id: sensor.iphone_pro_de_tanguy_activity
+        state: Walking
+  action:
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      message: Tanguy rentre à vélo
+      title: Vélo
+  - action: input_button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_button.bouton_porte_de_garage
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      area_id: garage
+  - delay:
+      hours: 0
+      minutes: 2
+      seconds: 0
+      milliseconds: 0
+  - if:
+    - condition: state
+      entity_id: binary_sensor.porte_de_garage
+      state: 'on'
+    then: []
+    else:
+    - action: input_button.press
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_button.bouton_porte_de_garage
+  mode: single

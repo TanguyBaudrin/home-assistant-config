@@ -1,36 +1,3 @@
-- id: 'camera_disconnected'
-  alias: '[Maison] Une caméra est déconnectée'
-  description: ''
-  triggers:
-  - type: not_connected
-    device_id: 69b55e596098bf4d9ff6926fde3b37e2
-    entity_id: dac3559ae6778fd78af6b383915cb201
-    domain: binary_sensor
-    alias: Caméra abri de jardin n'est plus connectée
-    id: abri de jardin
-    trigger: device
-  - alias: Caméra terrasse n'est plus connectée
-    type: not_connected
-    device_id: 4af4fafa7852933d37f18426446a3e82
-    entity_id: 33baac5db208fc4735dbd8c136bb997f
-    domain: binary_sensor
-    id: terrasse
-    trigger: device
-  - alias: Caméra garage côté jardin n'est plus connectée
-    type: not_connected
-    device_id: a7af7b4e2aef8ea17ec6e6e317e856d2
-    entity_id: 88549828dc45a49097062a2805555a47
-    domain: binary_sensor
-    id: garage coté jardin
-    trigger: device
-  conditions: []
-  actions:
-  - action: notify.mobile_app_iphone_pro_de_tanguy
-    metadata: {}
-    data:
-      title: Caméra déconnectée
-      message: La caméra {{ trigger.id }} n'est plus connectée
-  mode: single
 - id: '1700041812633'
   alias: '[Maison] Automatisation sur moins de 10% de batterie sur les caméra'
   description: ''
@@ -434,50 +401,6 @@
       entity_id: switch.commutateur_porte_de_garage_commutateur
   mode: single
 
-- id: '1736799359847'
-  alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite_2
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-    above: 70
-    id: Humidité haute
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite_2
-    id: Humidité basse
-    below: 70
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Humidité haute
-      sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Vitesse 2
-        target:
-          entity_id: input_select.interrupteur_vmc
-    - conditions:
-      - condition: trigger
-        id:
-        - Humidité basse
-      sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Vitesse 1
-        target:
-          entity_id: input_select.interrupteur_vmc
-  mode: single
 - id: '1736933681489'
   alias: Auto - Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
   description: ''
@@ -531,7 +454,6 @@
     target:
       entity_id: input_button.bouton_porte_de_garage
   mode: single
-
 - id: '1737633981398'
   alias: Auto - Chambre parents - Apple TV - Mettre en route l'Apple TV lors d'un
     appui long sur l'interrupteur
