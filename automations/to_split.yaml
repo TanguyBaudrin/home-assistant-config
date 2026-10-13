@@ -56,22 +56,6 @@
       message: Tanguy vient de partir de {{ trigger.id }}
       title: Tanguy viens de partir
   mode: single
-- id: '1700388839476'
-  alias: '[Maison] Changement de préréglage thermostat netatmo'
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - climate.sejour
-    attribute: preset_mode
-  condition: []
-  action:
-  - service: notify.mobile_app_iphone_de_tanguy
-    data:
-      title: Changement de mode Netatmo
-      message: Netatmo passe en mode {{ state_attr('climate.sejour', 'preset_mode')
-        }}
-  mode: single
 - id: '1702810071752'
   alias: '[Maison] Une vanne netatmo n’est plus disponible'
   description: ''
