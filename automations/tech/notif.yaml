@@ -1,0 +1,37 @@
+- id: 'auto_tech_cameras_deconnexion_notification'
+  alias: Tech - Caméras - Notification quand une caméra se déconnecte
+  description: >
+    Notifie Tanguy par mobile quand l'une des trois caméras (abri de
+    jardin, terrasse, garage côté jardin) perd sa connexion. Se déclenche
+    sur l'événement not_connected du binary_sensor pour chaque caméra et
+    envoie une notification identifiant la caméra déconnectée via son id.
+    (Migré le 2026-10-01)
+  trigger:
+    - platform: device
+      domain: binary_sensor
+      device_id: 69b55e596098bf4d9ff6926fde3b37e2
+      type: not_connected
+      entity_id: dac3559ae6778fd78af6b383915cb201
+      id: abri de jardin
+      alias: Caméra abri de jardin n'est plus connectée
+    - platform: device
+      domain: binary_sensor
+      device_id: 4af4fafa7852933d37f18426446a3e82
+      type: not_connected
+      entity_id: 33baac5db208fc4735dbd8c136bb997f
+      id: terrasse
+      alias: Caméra terrasse n'est plus connectée
+    - platform: device
+      domain: binary_sensor
+      device_id: a7af7b4e2aef8ea17ec6e6e317e856d2
+      type: not_connected
+      entity_id: 88549828dc45a49097062a2805555a47
+      id: garage coté jardin
+      alias: Caméra garage côté jardin n'est plus connectée
+  condition: []
+  action:
+    - action: notify.mobile_app_iphone_pro_de_tanguy
+      data:
+        title: Caméra déconnectée
+        message: "La caméra {{ trigger.id }} n'est plus connectée"
+  mode: single
