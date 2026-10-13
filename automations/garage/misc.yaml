@@ -1,0 +1,24 @@
+- id: 'auto_garage_porte_commutateur'
+  alias: Garage - Porte - Envoyer la commande au commutateur
+  description: >-
+    Cette automatisation envoie une commande au commutateur de la porte de garage
+    lorsqu'on appuie sur le bouton virtuel `input_button.bouton_porte_de_garage`.
+    Elle effectue deux toggles successifs pour simuler un appui sur le commutateur physique.
+    (Migré le 2026-10-10)
+  trigger:
+  - trigger: state
+    entity_id:
+    - input_button.bouton_porte_de_garage
+  condition: []
+  action:
+  - action: switch.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.commutateur_porte_de_garage_commutateur
+  - action: switch.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.commutateur_porte_de_garage_commutateur
+  mode: single
