@@ -417,52 +417,59 @@
       entity_id: switch.commutateur_porte_de_garage_commutateur
   mode: single
 
-- id: '1736799359847'
-  alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
+- id: '1736933681489'
+  alias: Auto - Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
   description: ''
   triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite_2
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-    above: 70
-    id: Humidité haute
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite_2
-    id: Humidité basse
-    below: 70
-  conditions: []
+  - trigger: zone
+    entity_id: person.tanguy_baudrin
+    zone: zone.home
+    event: enter
+  conditions:
+  - condition: and
+    conditions:
+    - condition: state
+      entity_id: binary_sensor.porte_de_garage
+      state: 'off'
+    - alias: Tanguy rentre à vélo ou à pied
+      condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.iphone_pro_de_tanguy_activity
+        state: Cycling
+      - condition: state
+        entity_id: sensor.iphone_pro_de_tanguy_activity
+        state: Walking
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Humidité haute
-      sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Vitesse 2
-        target:
-          entity_id: input_select.interrupteur_vmc
-    - conditions:
-      - condition: trigger
-        id:
-        - Humidité basse
-      sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Vitesse 1
-        target:
-          entity_id: input_select.interrupteur_vmc
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      message: Tanguy rentre à vélo
+      title: Vélo
+  - action: input_button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_button.bouton_porte_de_garage
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      area_id: garage
+  - delay:
+      hours: 0
+      minutes: 2
+      seconds: 0
+      milliseconds: 0
+  - condition: state
+    entity_id: binary_sensor.porte_de_garage
+    state: 'on'
+  - action: input_button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_button.bouton_porte_de_garage
   mode: single
-
-
 - id: '1737633981398'
   alias: Auto - Chambre parents - Apple TV - Mettre en route l'Apple TV lors d'un
     appui long sur l'interrupteur
