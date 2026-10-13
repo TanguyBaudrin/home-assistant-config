@@ -1,0 +1,55 @@
+- id: 'auto_global_batterie_alerte'
+  alias: Global - Batterie - Alerte quand les piles doivent être remplacées
+  description: |
+    Envoie une notification mobile et crée une notification persistante quand une
+    pile devient faible, puis supprime cette notification quand la pile est
+    remplacée. Déclencheurs : événement battery_notes_battery_threshold
+    (seuil bas / seuil haut). Actions : notification push + notification
+    persistante pour le bas, suppression de la notification persistante pour le
+    haut. (Migré le 2026-10-08)
+  trigger:
+    - id: low
+      alias: La pile passe en niveau bas
+      platform: event
+      event_type: battery_notes_battery_threshold
+      event_data:
+        battery_low: true
+    - id: high
+      alias: La pile passe en niveau haut
+      platform: event
+      event_type: battery_notes_battery_threshold
+      event_data:
+        battery_low: false
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - low
+          sequence:
+            - service: notify.mobile_app_iphone_pro_de_tanguy
+              data:
+                title: "{{ trigger.event.data.device_name }} Battery Low"
+                notification_id: "{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id }}"
+                message: >
+                  The device has a battery level of {{ trigger.event.data.battery_level }}%
+                  {{ '\n' -}} You need {{ trigger.event.data.battery_quantity }}x
+                  {{ trigger.event.data.battery_type }}
+            - service: persistent_notification.create
+              data:
+                title: "{{ trigger.event.data.device_name }} Battery Low"
+                notification_id: "{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id }}"
+                message: >
+                  The device has a battery level of {{ trigger.event.data.battery_level }}%
+                  {{ '\n' -}} You need {{ trigger.event.data.battery_quantity }}x
+                  {{ trigger.event.data.battery_type }}
+        - conditions:
+            - condition: trigger
+              id:
+                - high
+          sequence:
+            - service: persistent_notification.dismiss
+              data:
+                notification_id: "{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id }}"
+  mode: queued
