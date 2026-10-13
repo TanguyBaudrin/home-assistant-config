@@ -276,3 +276,53 @@
         target:
           entity_id: input_select.interrupteur_vmc
   mode: restart
+
+- id: 'auto_grenier_vmc_reguler_la_vitesse_en_fonction_de_lhumidite'
+  alias: 'Grenier - VMC - Régulation de la vitesse selon l''humidité'
+  description: |
+    Régule automatiquement la vitesse de la VMC du grenier en fonction du
+    taux d'humidité mesuré par le capteur ewelink. Lorsque l'humidité dépasse
+    70 % pendant plus d'une minute, la VMC passe en vitesse 2 ; si elle
+    redescend en dessous de 70 %, elle revient en vitesse 1.
+    (Migré le 2026-10-11)
+  trigger:
+    - id: Humidité haute
+      trigger: numeric_state
+      entity_id:
+        - sensor.ewelink_snzb_02p_humidite_2
+      for:
+        hours: 0
+        minutes: 1
+        seconds: 0
+      above: 70
+    - id: Humidité basse
+      trigger: numeric_state
+      entity_id:
+        - sensor.ewelink_snzb_02p_humidite_2
+      below: 70
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Humidité haute
+          sequence:
+            - action: input_select.select_option
+              metadata: {}
+              data:
+                option: Vitesse 2
+              target:
+                entity_id: input_select.interrupteur_vmc
+        - conditions:
+            - condition: trigger
+              id:
+                - Humidité basse
+          sequence:
+            - action: input_select.select_option
+              metadata: {}
+              data:
+                option: Vitesse 1
+              target:
+                entity_id: input_select.interrupteur_vmc
+  mode: single
