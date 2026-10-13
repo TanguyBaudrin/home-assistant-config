@@ -7,7 +7,7 @@ This repository manages a Home Assistant installation entirely through YAML file
 There is no custom component or package manager here, and no Python or Node.js code. The whole installation is expressed as:
 
 - `configuration.yaml` and its includes (`templates.yaml`, `input_numbers.yaml`, `input_booleans.yaml`, `input_datetime.yaml`, `utility_meters.yaml`, `scripts.yaml`, `scenes.yaml`)
-- `automations/` split by room or functional area (`bureau/`, `energy/`, `garage/`, `global/`, `kitchen/`, `tech/`)
+- `automations/` split by room or functional area (`bureau/`, `energy/`, `garage/`, `global/`, `grenier/`, `kitchen/`, `salon/`, `tech/`)
 - `blueprints/` for reusable automation patterns
 
 ## The language policy
