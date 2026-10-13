@@ -39,26 +39,26 @@ queue:
     status: done
     attempts: 1
   - id: '1700388839476'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1702810071752'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1735821043121'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1736019595242'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1736333581558'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1736799359847'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1736933681489'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1737633981398'
     status: pending
     attempts: 0
