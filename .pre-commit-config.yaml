@@ -25,3 +25,9 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks-system
+        # Amont (v8.30.1) oublie `pass_filenames: false` sur ce hook, present
+        # sur `gitleaks` et `gitleaks-docker` : sans cette ligne, pre-commit
+        # passe les fichiers en argument et gitleaks refuse (« accepts at most
+        # 1 arg »). Le scan porte sur le diff indexe, pas sur une liste de
+        # fichiers.
+        pass_filenames: false
