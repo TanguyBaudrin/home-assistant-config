@@ -12,3 +12,40 @@
         - 685cca589003fea87012385c34573ea8
         - 8855561d2919d86e2b6523cc86983ee2
       no_motion_wait: 180
+- id: 'auto_garage_lumiere_synchro_interrupteur'
+  alias: Garage - Lumières - Synchronisation de la lumière avec l'interrupteur mural
+  description: >-
+    Cette automatisation synchronise la lumière du garage avec l'interrupteur mural.
+    Lorsqu'on actionne l'interrupteur mural (allumé ou éteint), la lumière du garage
+    suit le même état. (Migré le 2026-10-14)
+  trigger:
+  - trigger: state
+    entity_id:
+    - light.interrupteur_mural_lumiere
+    to: 'on'
+    id: allumé
+  - trigger: state
+    entity_id:
+    - light.interrupteur_mural_lumiere
+    to: 'off'
+    id: éteint
+  condition: []
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - allumé
+      sequence:
+      - action: light.turn_on
+        target:
+          area_id: garage
+    - conditions:
+      - condition: trigger
+        id:
+        - éteint
+      sequence:
+      - action: light.turn_off
+        target:
+          area_id: garage
+  mode: single

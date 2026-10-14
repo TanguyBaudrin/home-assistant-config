@@ -293,44 +293,6 @@
   mode: single
 
 
-- id: '1737726282862'
-  alias: Auto - Garage - Lumière du garage - Synchro avec l'interrupteur
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - light.interrupteur_mural_lumiere
-    to: 'on'
-    id: allumé
-  - trigger: state
-    entity_id:
-    - light.interrupteur_mural_lumiere
-    to: 'off'
-    id: éteint
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - allumé
-      sequence:
-      - action: light.turn_on
-        metadata: {}
-        data: {}
-        target:
-          area_id: garage
-    - conditions:
-      - condition: trigger
-        id:
-        - éteint
-      sequence:
-      - action: light.turn_off
-        metadata: {}
-        data: {}
-        target:
-          area_id: garage
-  mode: single
 - id: '1739261458706'
   alias: Interrupteur - Bureau - Prise bureau Agnès - Utilisation interupteur boulanger
   description: ''
