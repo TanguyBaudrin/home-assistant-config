@@ -182,7 +182,7 @@ jobs:
           echo "validateur pret"
 
       - name: Migrer avec l'agent
-        if: steps.pick.outputs.skip != 'true'
+        if: steps.claim.outputs.skip != 'true'
         env:
           PROMPT_BODY: ${{ steps.prompt.outputs.body }}
         run: |
