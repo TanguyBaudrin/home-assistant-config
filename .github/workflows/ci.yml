@@ -92,3 +92,37 @@ jobs:
         # apostrophes simples : le workflow echouait alors en syntaxe awk au
         # lieu d echouer au premier run reel.
         run: python3 .github/scripts/workflow-check.py
+
+  gitleaks:
+    # Un secret commite puis supprime reste visible dans l historique : ce scan
+    # couvre tout le passe, pas seulement le dernier diff. Il double le hook
+    # pre-commit, qui lui peut etre contourne (--no-verify).
+    name: Fuites de secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Historique complet : `gitleaks git` parcourt tous les commits.
+          fetch-depth: 0
+
+      - name: Installer gitleaks
+        # Binaire officiel epingle et verifie par empreinte : pas de dependance
+        # a une action tierce, dont le runtime et les conditions de licence
+        # evoluent independamment du depot.
+        run: |
+          set -euo pipefail
+          version=8.30.1
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${version}"
+          archive="gitleaks_${version}_linux_x64.tar.gz"
+          curl -sSfL -o "/tmp/${archive}" "${base}/${archive}"
+          curl -sSfL -o /tmp/gitleaks_checksums.txt "${base}/gitleaks_${version}_checksums.txt"
+          (cd /tmp && grep " ${archive}\$" gitleaks_checksums.txt | sha256sum --check --strict -)
+          tar -xzf "/tmp/${archive}" -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Detecter les fuites
+        # `--redact` masque la valeur trouvee dans les logs : le rapport ne doit
+        # pas recopier le secret qu il signale.
+        run: gitleaks git --config .gitleaks.toml --redact --verbose

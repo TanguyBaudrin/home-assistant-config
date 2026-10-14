@@ -1,0 +1,16 @@
+# Configuration gitleaks du depot.
+#
+# On garde la detection par defaut et on autorise le seul fichier qui ressemble
+# a un secret sans en etre un : le bouchon de validation CI, dont les valeurs
+# sont factices et ne sont jamais montees en production.
+#
+#   docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 \
+#     git --config .gitleaks.toml --redact --verbose
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Bouchons de validation CI : valeurs factices, aucun secret reel"
+paths = [
+  '''\.ci/secrets\.yaml$''',
+]

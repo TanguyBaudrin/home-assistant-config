@@ -18,3 +18,10 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-merge-conflict
+
+  # Bloque un secret des le `git commit`. La version visee est celle epinglee
+  # dans mise.toml (`language: system`), comme yamllint l'est dans la CI.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks-system
