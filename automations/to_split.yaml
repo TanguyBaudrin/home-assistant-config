@@ -1,62 +1,78 @@
-- id: '1700041812633'
-  alias: '[Maison] Automatisation sur moins de 10% de batterie sur les caméra'
+- id: 'camera_disconnected'
+  alias: '[Maison] Une caméra est déconnectée'
   description: ''
   triggers:
-  - type: battery_level
+  - type: not_connected
     device_id: 69b55e596098bf4d9ff6926fde3b37e2
-    entity_id: 48dc69f0808fe6a975e418f4cb0a96e5
-    domain: sensor
-    below: 10
+    entity_id: dac3559ae6778fd78af6b383915cb201
+    domain: binary_sensor
+    alias: Caméra abri de jardin n'est plus connectée
     id: abri de jardin
     trigger: device
-  - type: battery_level
+  - alias: Caméra terrasse n'est plus connectée
+    type: not_connected
     device_id: 4af4fafa7852933d37f18426446a3e82
-    entity_id: 4e06bfd72bfd4a955e12d1f118ff6c07
-    domain: sensor
+    entity_id: 33baac5db208fc4735dbd8c136bb997f
+    domain: binary_sensor
     id: terrasse
-    below: 10
     trigger: device
-  - type: battery_level
+  - alias: Caméra garage côté jardin n'est plus connectée
+    type: not_connected
     device_id: a7af7b4e2aef8ea17ec6e6e317e856d2
-    entity_id: dea0cb06fff8c475ba7cc05fb4af3da2
-    domain: sensor
-    id: garage côté jardin
-    below: 10
+    entity_id: 88549828dc45a49097062a2805555a47
+    domain: binary_sensor
+    id: garage coté jardin
     trigger: device
   conditions: []
   actions:
-  - data:
-      title: Batterie faible
-      message: La caméra {{ trigger.id }} a moins de 10% de batterie
-    action: notify.mobile_app_iphone_pro_de_tanguy
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      title: Caméra déconnectée
+      message: La caméra {{ trigger.id }} n'est plus connectée
   mode: single
-- id: '1702810071752'
-  alias: '[Maison] Une vanne netatmo n’est plus disponible'
+- id: '1700051716580'
+  alias: '[Zones] Tanguy quitte le travail'
   description: ''
   triggers:
-  - entity_id:
-    - climate.netatmo_valve_1
-    - climate.netatmo_valve_2
-    - climate.netatmo_valve_4
-    - climate.netatmo_valve_5
-    - climate.netatmo_valve_6
-    - climate.netatmo_valve_7
-    - climate.netatmo_valve_8
-    - climate.netatmo_valve_9
-    to: unavailable
-    trigger: state
-    for:
-      hours: 0
-      minutes: 30
-      seconds: 0
-  conditions: []
+  - entity_id: person.tanguy_baudrin
+    zone: zone.sfeir_lille
+    event: leave
+    id: sfeir
+    trigger: zone
+  conditions:
+  - alias: Les jours de semaine après 16h
+    condition: time
+    after: '13:00:00'
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
   actions:
-  - data:
-      title: Vanne indisponible
-      message: Une vanne dans {{ area_name(trigger.entity_id) }} n'est plus disponible
-    action: notify.mobile_app_iphone_pro_de_tanguy
+  - action: notify.mobile_app_iphone_de_agnes
+    metadata: {}
+    data:
+      message: Tanguy vient de partir de {{ trigger.id }}
+      title: Tanguy viens de partir
   mode: single
-
+- id: '1700388839476'
+  alias: '[Maison] Changement de préréglage thermostat netatmo'
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - climate.sejour
+    attribute: preset_mode
+  condition: []
+  action:
+  - service: notify.mobile_app_iphone_de_tanguy
+    data:
+      title: Changement de mode Netatmo
+      message: Netatmo passe en mode {{ state_attr('climate.sejour', 'preset_mode')
+        }}
+  mode: single
 - id: '1735821043121'
   alias: Notification - Global - Batterie - Alertes quand les piles doivent être remplacées
   description: Battery Low Notification with auto dismiss
@@ -264,80 +280,52 @@
     controller_id: '{{controller_device}}'
   mode: restart
   max_exceeded: silent
-- id: '1736333581558'
-  alias: Mode - Garage - Commutateur porte de garage - Envoi de la commande à l'interrupteur
+- id: '1736799359847'
+  alias: 'Auto - Grenier - VMC - réguler la vitesse en fonction de l’humidité '
   description: ''
   triggers:
-  - trigger: state
+  - trigger: numeric_state
     entity_id:
-    - input_button.bouton_porte_de_garage
+    - sensor.ewelink_snzb_02p_humidite_2
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    above: 70
+    id: Humidité haute
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ewelink_snzb_02p_humidite_2
+    id: Humidité basse
+    below: 70
   conditions: []
   actions:
-  - action: switch.toggle
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.commutateur_porte_de_garage_commutateur
-  - action: switch.toggle
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.commutateur_porte_de_garage_commutateur
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Humidité haute
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 2
+        target:
+          entity_id: input_select.interrupteur_vmc
+    - conditions:
+      - condition: trigger
+        id:
+        - Humidité basse
+      sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Vitesse 1
+        target:
+          entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1736933681489'
-  alias: Auto - Garage - Porte de garage - Arrivée de Tanguy à vélo ou à pied
-  description: ''
-  triggers:
-  - trigger: zone
-    entity_id: person.tanguy_baudrin
-    zone: zone.home
-    event: enter
-  conditions:
-  - condition: and
-    conditions:
-    - condition: state
-      entity_id: binary_sensor.porte_de_garage
-      state: 'off'
-    - alias: Tanguy rentre à vélo ou à pied
-      condition: or
-      conditions:
-      - condition: state
-        entity_id: sensor.iphone_pro_de_tanguy_activity
-        state: Cycling
-      - condition: state
-        entity_id: sensor.iphone_pro_de_tanguy_activity
-        state: Walking
-  actions:
-  - action: notify.mobile_app_iphone_pro_de_tanguy
-    metadata: {}
-    data:
-      message: Tanguy rentre à vélo
-      title: Vélo
-  - action: input_button.press
-    metadata: {}
-    data: {}
-    target:
-      entity_id: input_button.bouton_porte_de_garage
-  - action: light.turn_on
-    metadata: {}
-    data: {}
-    target:
-      area_id: garage
-  - delay:
-      hours: 0
-      minutes: 2
-      seconds: 0
-      milliseconds: 0
-  - condition: state
-    entity_id: binary_sensor.porte_de_garage
-    state: 'on'
-  - action: input_button.press
-    metadata: {}
-    data: {}
-    target:
-      entity_id: input_button.bouton_porte_de_garage
-  mode: single
+
 - id: '1737633981398'
   alias: Auto - Chambre parents - Apple TV - Mettre en route l'Apple TV lors d'un
     appui long sur l'interrupteur
