@@ -113,3 +113,23 @@
               - entree
               - salle_a_manger
   mode: single
+
+- id: 'auto_global_coucher_maison'
+  alias: "Maison - Événement - Activation du coucher de la maison"
+  description: |
+    Émet l'événement coucher_maison au coucher du soleil ou à 22h00 pour déclencher
+    la séquence de nuit de la maison. (Migré le 2026-10-15)
+  trigger:
+    - platform: sun
+      event: sunset
+      offset: '00:00:00'
+      id: soleil
+    - platform: time
+      at: '22:00:00'
+      id: heure
+  condition: []
+  action:
+    - event: coucher_maison
+      event_data:
+        trigger: '{{ trigger.id }}'
+  mode: single

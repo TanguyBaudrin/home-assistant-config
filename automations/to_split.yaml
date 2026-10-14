@@ -292,25 +292,20 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-
-- id: '1739543565644'
-  alias: Auto - Maison - Event - Activation du coucher de la maison
+- id: '1739544177883'
+  alias: Auto - Bureau - Volets - Gestion automatisée du volet
   description: ''
   triggers:
-  - event: sunset
-    offset: 00:00
-    trigger: sun
-    id: soleil
-  - at: '22:00'
-    trigger: time
-    id: heure
+  - trigger: event
+    event_type: coucher_maison
   conditions: []
   actions:
-  - event: coucher_maison
-    event_data:
-      trigger: '{{ trigger.id }}'
+  - action: cover.close_cover
+    metadata: {}
+    data: {}
+    target:
+      area_id: bureau
   mode: single
-
 - id: '1739546482324'
   alias: Auto - Maison - Tempo - Notification couleur du lendemain
   description: ''
