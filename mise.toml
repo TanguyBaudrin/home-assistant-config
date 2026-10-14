@@ -59,6 +59,7 @@ echo "Testing factory scripts..."
 node .github/scripts/queue.test.cjs
 node .github/scripts/gh-pages.test.cjs
 node .github/scripts/strip-agent-trace.test.cjs
+node factory/cockpit/factory-state.test.cjs
 bash .github/scripts/render-prompt.test.sh
 python3 .github/scripts/workflow-check.py
 echo "✓ Factory tests passed"

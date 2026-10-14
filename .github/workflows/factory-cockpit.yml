@@ -1,0 +1,89 @@
+# Cockpit de l'usine : collecte l'etat courant et le publie sur GitHub Pages.
+#
+# L'instantane (data.json) est ecrit par factory/cockpit/collect.cjs avec le
+# GITHUB_TOKEN du workflow, car le depot est prive : l'API GitHub exige une
+# authentification meme pour lire. La page publiee ne contient donc aucun
+# secret ; elle peut en plus rafraichir en direct si le visiteur fournit un
+# jeton en lecture seule, mais l'instantané suffit a la consulter.
+#
+# La logique de collecte et de classement vit dans factory/cockpit/factory-state.js,
+# testee par factory/cockpit/factory-state.test.cjs et par `mise run factory-tests`.
+name: Factory Cockpit
+
+on:
+  schedule:
+    # Toutes les 3 heures, a la minute 41 : un instantane frais sans saturer l'API.
+    - cron: '41 */3 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'factory/cockpit/**'
+      - 'factory/queue.yaml'
+      - '.github/workflows/factory-cockpit.yml'
+  workflow_dispatch:
+
+# `contents: read` est obligatoire : un bloc `permissions:` remplace tous les
+# droits, il ne les ajoute pas. Sans lui, `actions/checkout` se fait refuser par
+# GitHub avec un trompeur « Repository not found » sur un depot prive.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: factory-cockpit
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Collecter l'etat
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Tests du collecteur
+        run: node factory/cockpit/factory-state.test.cjs
+
+      - name: Collecter l'instantane
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node factory/cockpit/collect.cjs factory/cockpit/data.json
+
+      - name: Preparer le site
+        # On ne publie que les trois fichiers servis : ni les tests, ni le
+        # collecteur, ni le README n'ont leur place sur un site public.
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp factory/cockpit/index.html factory/cockpit/factory-state.js factory/cockpit/data.json _site/
+          touch _site/.nojekyll
+
+      - name: Configurer Pages
+        uses: actions/configure-pages@v5
+
+      - name: Televerser l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Publier
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deployer sur Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -80,6 +80,9 @@ jobs:
       - name: Tests de pagination
         run: node .github/scripts/gh-pages.test.cjs
 
+      - name: Tests du cockpit
+        run: node factory/cockpit/factory-state.test.cjs
+
       - name: Tests de rendu de prompt
         run: bash .github/scripts/render-prompt.test.sh
 

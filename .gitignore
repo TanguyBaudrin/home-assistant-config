@@ -31,3 +31,14 @@ secrets.yaml
 
 # Mise local configuration (contains secrets)
 mise.local.toml
+
+# Instantane du cockpit, genere par factory/cockpit/collect.cjs au moment de la
+# publication. Jamais versionne : il serait perime des le commit suivant.
+factory/cockpit/data.json
+
+# Dumps d'etat generes localement par `mise run ha-status` et consorts.
+# Jamais versionnes : ils exposent des donnees personnelles (adresse postale,
+# BSSID/SSID Wi-Fi, noms des occupants, inventaire des appareils).
+all_entities_status.txt
+all_entities_unavailable.txt
+entites_non_dispos.txt

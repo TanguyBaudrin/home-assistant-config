@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Cockpit de l'usine logicielle</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2330;
+    --border: #2b3441;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --ok: #3fb950;
+    --info: #58a6ff;
+    --warn: #d29922;
+    --crit: #f85149;
+    --accent: #f0a34a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  a { color: var(--info); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #111722, var(--bg));
+  }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+  header h1 span { color: var(--accent); }
+  header .meta { color: var(--muted); font-size: 13px; margin-left: auto; text-align: right; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 60px; }
+  section { margin-top: 26px; }
+  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); }
+
+  /* Bandeau de sante */
+  .health { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 10px; border: 1px solid var(--border); }
+  .health .led { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 4px rgba(255,255,255,.04); }
+  .health.critique { background: rgba(248,81,73,.10); border-color: rgba(248,81,73,.5); }
+  .health.attention { background: rgba(210,153,34,.10); border-color: rgba(210,153,34,.5); }
+  .health.ok { background: rgba(63,185,80,.08); border-color: rgba(63,185,80,.4); }
+  .health.critique .led { background: var(--crit); }
+  .health.attention .led { background: var(--warn); }
+  .health.ok .led { background: var(--ok); }
+  .health strong { font-size: 16px; }
+
+  /* Cartes de metriques */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .n { font-family: var(--mono); font-size: 26px; line-height: 1.1; }
+  .kpi .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+  .kpi.warn .n { color: var(--warn); }
+  .kpi.crit .n { color: var(--crit); }
+  .kpi.ok .n { color: var(--ok); }
+
+  /* Barre et pastilles de file */
+  .bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .bar > span { display: block; height: 100%; }
+  .bar .done { background: var(--ok); }
+  .bar .pending { background: #30475e; }
+  .bar .blocked { background: var(--crit); }
+  .legend { display: flex; gap: 16px; margin-top: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .chip {
+    font-family: var(--mono); font-size: 11px; padding: 3px 7px; border-radius: 5px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted); cursor: default;
+  }
+  .chip.done { border-color: rgba(63,185,80,.5); color: var(--ok); }
+  .chip.pending { border-color: #34506b; color: #9dc2e6; }
+  .chip.blocked { border-color: rgba(248,81,73,.6); color: var(--crit); }
+
+  /* Tableaux */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 14px; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 999px; margin: 1px 4px 1px 0; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); }
+  .tag.status.escalade { border-color: rgba(248,81,73,.6); color: var(--crit); }
+  .tag.status.a-corriger { border-color: rgba(210,153,34,.6); color: var(--warn); }
+  .tag.status.en-revue { border-color: rgba(88,166,255,.6); color: var(--info); }
+  .tag.status.fusionnee { border-color: rgba(63,185,80,.5); color: var(--ok); }
+  .tag.status.a-implementer { border-color: rgba(63,185,80,.5); color: var(--ok); }
+  .tag.attempt { border-color: rgba(240,163,74,.5); color: var(--accent); }
+
+  .runs { display: flex; flex-direction: column; gap: 2px; }
+  .run { display: flex; gap: 12px; align-items: center; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+  .run:nth-child(odd) { background: var(--panel-2); }
+  .run .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--muted); }
+  .run .dot.success { background: var(--ok); }
+  .run .dot.failure, .run .dot.timed_out, .run .dot.startup_failure { background: var(--crit); }
+  .run .dot.cancelled, .run .dot.skipped { background: var(--warn); }
+  .run .dot.in_progress, .run .dot.queued { background: var(--info); }
+  .run .wf { min-width: 150px; }
+  .run .when { margin-left: auto; color: var(--muted); font-family: var(--mono); white-space: nowrap; }
+
+  /* Controls live */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .controls input {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 7px; padding: 7px 10px; font: inherit; font-size: 13px; min-width: 260px;
+  }
+  .controls button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 14px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .controls button:hover { border-color: var(--accent); color: var(--accent); }
+  .controls button:disabled { opacity: .5; cursor: default; }
+  .notice { padding: 10px 14px; border-radius: 8px; background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.35); color: var(--text); font-size: 13px; margin-top: 12px; }
+  .notice.error { background: rgba(248,81,73,.08); border-color: rgba(248,81,73,.4); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 4px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cockpit <span>//</span> usine logicielle</h1>
+  <div class="meta">
+    <div id="repo-line" class="mono">chargement…</div>
+    <div id="generated-line" class="muted"></div>
+  </div>
+</header>
+
+<main>
+  <div id="notice" class="notice" hidden></div>
+
+  <section aria-labelledby="h-sante">
+    <h2 id="h-sante">Etat</h2>
+    <div id="health" class="health"><span class="led"></span><span class="muted">chargement…</span></div>
+  </section>
+
+  <section aria-labelledby="h-kpis">
+    <h2 id="h-kpis">Indicateurs</h2>
+    <div id="kpis" class="kpis"></div>
+  </section>
+
+  <section aria-labelledby="h-file">
+    <h2 id="h-file">File de migration</h2>
+    <div class="panel">
+      <div id="queue-bar" class="bar"></div>
+      <div id="queue-legend" class="legend"></div>
+      <div id="queue-chips" class="chips"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-prs">
+    <h2 id="h-prs">Pull requests ouvertes</h2>
+    <div id="prs" class="panel"></div>
+  </section>
+
+  <section aria-labelledby="h-issues">
+    <h2 id="h-issues">Issues ouvertes</h2>
+    <div id="issues" class="panel"></div>
+  </section>
+
+  <section aria-labelledby="h-runs">
+    <h2 id="h-runs">Dernières exécutions de l'usine</h2>
+    <div id="runs" class="panel"><p class="empty">chargement…</p></div>
+  </section>
+
+  <section aria-labelledby="h-maj">
+    <h2 id="h-maj">Mise à jour</h2>
+    <div class="panel">
+      <p class="muted" style="margin-top:0">
+        Instantané généré le <span id="snapshot-when" class="mono">?</span> par le
+        workflow <span class="mono">factory-cockpit.yml</span>, qui lit l'API GitHub
+        côté serveur. <strong>Aucun jeton n'est nécessaire ici</strong> : la page ne
+        fait que lire ce fichier. L'instantané est régénéré à chaque activité de
+        l'usine (issue, revue, exécution) et au plus tard toutes les heures.
+      </p>
+      <div class="controls">
+        <button id="reload" type="button">Recharger la page</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Usine définie dans <span class="mono">.github/workflows/factory-*.yml</span>,
+    politique dans <span class="mono">factory/policy.md</span>, file dans
+    <span class="mono">factory/queue.yaml</span>. Vue en lecture seule : rien n'est modifié.
+  </footer>
+</main>
+
+<script src="factory-state.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var FS = window.FactoryState;
+  var DEFAULT_REPO = { owner: 'TanguyBaudrin', name: 'home-assistant-config' };
+  var STATUS_LABELS = {
+    'a-corriger': 'à corriger',
+    'en-revue': 'en revue',
+    'escalade': 'escalade',
+    'hors-revue': 'hors revue',
+    'fusionnee': 'fusionnée',
+    'a-specifier': 'à spécifier',
+    'a-implementer': 'à implémenter',
+    'sans-spec': 'sans spec',
+    'fermee': 'fermée'
+  };
+
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function label(status) { return STATUS_LABELS[status] || status; }
+
+  function when(iso) {
+    if (!iso) return '';
+    var then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    var seconds = Math.round((Date.now() - then) / 1000);
+    if (seconds < 60) return "à l'instant";
+    var minutes = Math.round(seconds / 60);
+    if (minutes < 60) return 'il y a ' + minutes + ' min';
+    var hours = Math.round(minutes / 60);
+    if (hours < 24) return 'il y a ' + hours + ' h';
+    var days = Math.round(hours / 24);
+    if (days < 30) return 'il y a ' + days + ' j';
+    return new Date(iso).toLocaleDateString('fr-FR');
+  }
+
+  function el(id) { return document.getElementById(id); }
+
+  function notice(message, isError) {
+    var node = el('notice');
+    if (!message) { node.hidden = true; return; }
+    node.hidden = false;
+    node.className = 'notice' + (isError ? ' error' : '');
+    node.textContent = message;
+  }
+
+  // --- Rendu --------------------------------------------------------------
+
+  function renderHealth(state) {
+    var health = state.health || { level: 'ok', problems: [] };
+    var titles = { ok: 'Rien à arbitrer', attention: 'La boucle de correction tourne', critique: 'Arbitrage humain requis' };
+    var node = el('health');
+    node.className = 'health ' + health.level;
+    node.innerHTML = '<span class="led"></span><div><strong>' + esc(titles[health.level])
+      + '</strong>' + (health.problems.length
+        ? '<div class="muted">' + esc(health.problems.join(' · ')) + '</div>' : '') + '</div>';
+  }
+
+  function kpi(value, name, kind) {
+    return '<div class="kpi ' + (kind || '') + '"><div class="n">' + esc(value)
+      + '</div><div class="l">' + esc(name) + '</div></div>';
+  }
+
+  function renderKpis(state) {
+    var m = state.metrics || {};
+    var percent = m.queue_total ? Math.round((m.queue_done / m.queue_total) * 100) : 0;
+    el('kpis').innerHTML = [
+      kpi(percent + '%', 'Migrations', percent === 100 ? 'ok' : ''),
+      kpi(m.queue_done + '/' + m.queue_total, 'Terminées'),
+      kpi(m.pr_open, 'PR ouvertes'),
+      kpi(m.pr_awaiting, 'En revue', 'ok'),
+      kpi(m.pr_needs_fix, 'À corriger', m.pr_needs_fix ? 'warn' : ''),
+      kpi(m.pr_escalated, 'Escalades', m.pr_escalated ? 'crit' : ''),
+      kpi(m.issues_to_implement, 'À implémenter', 'ok'),
+      kpi(m.queue_blocked, 'File bloquée', m.queue_blocked ? 'crit' : '')
+    ].join('');
+  }
+
+  function renderQueue(state) {
+    var queue = state.queue || { entries: [] };
+    var counts = FS.queueCounts(queue);
+    var total = counts.total || 1;
+    el('queue-bar').innerHTML =
+      '<span class="done" style="width:' + (counts.done / total * 100) + '%"></span>' +
+      '<span class="pending" style="width:' + (counts.pending / total * 100) + '%"></span>' +
+      '<span class="blocked" style="width:' + (counts.blocked / total * 100) + '%"></span>';
+    el('queue-legend').innerHTML =
+      '<span><i style="background:var(--ok)"></i>' + counts.done + ' terminées</span>' +
+      '<span><i style="background:#30475e"></i>' + counts.pending + ' en attente</span>' +
+      '<span><i style="background:var(--crit)"></i>' + counts.blocked + ' bloquées</span>';
+    el('queue-chips').innerHTML = queue.entries.map(function (entry) {
+      return '<span class="chip ' + esc(entry.status) + '" title="' + esc(entry.id)
+        + ' — ' + esc(entry.status) + ', ' + entry.attempts + ' tentative(s)">'
+        + esc(entry.id) + '</span>';
+    }).join('');
+  }
+
+  function tag(text, kind) {
+    return '<span class="tag ' + (kind || '') + '">' + esc(text) + '</span>';
+  }
+
+  function renderPulls(state) {
+    var open = (state.pulls || []).filter(function (pull) { return pull.state === 'open'; });
+    var empty = '<p class="empty">Aucune pull request ouverte.</p>';
+    if (!open.length) { el('prs').innerHTML = empty; return; }
+    var rows = open.map(function (pull) {
+      var tags = tag(label(pull.status), 'status ' + pull.status);
+      if (pull.attempts) tags += tag('essai ' + pull.attempts, 'attempt');
+      if (pull.verdict) tags += tag('verdict ' + pull.verdict.toLowerCase());
+      return '<tr>'
+        + '<td class="num">#' + pull.number + '</td>'
+        + '<td><a href="' + esc(pull.url) + '">' + esc(pull.title) + '</a>'
+        + '<div class="muted mono" style="font-size:12px">' + esc(pull.head_ref) + '</div></td>'
+        + '<td>' + tags + '</td>'
+        + '<td class="num">' + esc(when(pull.updated_at)) + '</td>'
+        + '</tr>';
+    }).join('');
+    el('prs').innerHTML = '<table><thead><tr><th>N°</th><th>Titre</th><th>État</th><th>Mise à jour</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderIssues(state) {
+    var open = (state.issues || []).filter(function (issue) { return issue.state === 'open'; });
+    if (!open.length) { el('issues').innerHTML = '<p class="empty">Aucune issue ouverte.</p>'; return; }
+    var rows = open.map(function (issue) {
+      return '<tr>'
+        + '<td class="num">#' + issue.number + '</td>'
+        + '<td><a href="' + esc(issue.url) + '">' + esc(issue.title) + '</a></td>'
+        + '<td>' + tag(label(issue.stage), 'status ' + issue.stage) + '</td>'
+        + '<td class="num">' + esc(when(issue.updated_at)) + '</td>'
+        + '</tr>';
+    }).join('');
+    el('issues').innerHTML = '<table><thead><tr><th>N°</th><th>Titre</th><th>Étape</th><th>Mise à jour</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderRuns(state) {
+    var runs = (state.runs || []).slice(0, 12);
+    if (!runs.length) { el('runs').innerHTML = '<p class="empty">Aucune exécution récente.</p>'; return; }
+    el('runs').innerHTML = '<div class="runs">' + runs.map(function (run) {
+      var kind = run.conclusion || run.status || '';
+      return '<div class="run">'
+        + '<span class="dot ' + esc(kind) + '"></span>'
+        + '<span class="wf"><a href="' + esc(run.url) + '">' + esc(run.workflow) + '</a></span>'
+        + '<span class="muted mono">' + esc(run.event || '') + '</span>'
+        + '<span class="muted">' + esc(kind) + '</span>'
+        + '<span class="when">' + esc(when(run.created_at)) + '</span>'
+        + '</div>';
+    }).join('') + '</div>';
+  }
+
+  // Ne touche pas au bandeau `notice` : les appelants decident du message a
+  // afficher, sinon un rendu de secours effacerait l'erreur qui l'a provoque.
+  function render(state) {
+    if (!state || !state.metrics) {
+      el('kpis').innerHTML = '';
+      return;
+    }
+    el('repo-line').innerHTML = '<a href="' + esc(state.repo.url) + '">'
+      + esc(state.repo.owner + '/' + state.repo.name) + '</a>'
+      + '<span class="muted"> · ' + esc(state.default_branch) + '</span>';
+    el('generated-line').textContent = 'instantané ' + when(state.generated_at);
+    el('snapshot-when').textContent = state.generated_at || '?';
+    renderHealth(state);
+    renderKpis(state);
+    renderQueue(state);
+    renderPulls(state);
+    renderIssues(state);
+    renderRuns(state);
+  }
+
+  // --- Chargement ---------------------------------------------------------
+
+  function loadSnapshot() {
+    return fetch('data.json', { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('data.json indisponible (' + res.status + ')');
+        return res.json();
+      })
+      .then(function (state) { render(state); notice(''); return state; })
+      .catch(function (error) {
+        notice('Instantané indisponible : ' + error.message
+          + '. En local, servez le dossier : python3 -m http.server -d factory/cockpit.', true);
+        render({ repo: { owner: DEFAULT_REPO.owner, name: DEFAULT_REPO.name, url: 'https://github.com/' + DEFAULT_REPO.owner + '/' + DEFAULT_REPO.name }, default_branch: 'main', queue: { entries: [] }, pulls: [], issues: [], runs: [], metrics: { queue_total: 0, queue_done: 0, queue_blocked: 0, pr_open: 0, pr_awaiting: 0, pr_needs_fix: 0, pr_escalated: 0, issues_open: 0, issues_to_implement: 0 }, health: { level: 'ok', problems: [] } });
+        return null;
+      });
+  }
+
+  function reload() {
+    window.location.reload();
+  }
+
+  function init() {
+    el('reload').addEventListener('click', reload);
+    loadSnapshot();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
