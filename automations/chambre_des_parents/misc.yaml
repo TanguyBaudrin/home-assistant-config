@@ -116,7 +116,7 @@
             data:
               skip_condition: true
             target:
-              entity_id: automation.auto_chambre_parents_apple_tv_mettre_en_route_l_apple_tv
+              entity_id: automation.auto_chambre_des_parents_apple_tv_mettre_en_route_l_apple_tv
   variables:
     integration: ZHA
     button_long_loop: false
