@@ -175,13 +175,18 @@
     <div class="panel">
       <p class="muted" style="margin-top:0">
         Instantané généré le <span id="snapshot-when" class="mono">?</span> par le
-        workflow <span class="mono">factory-cockpit.yml</span>, qui lit l'API GitHub
-        côté serveur. <strong>Aucun jeton n'est nécessaire ici</strong> : la page ne
-        fait que lire ce fichier. L'instantané est régénéré à chaque activité de
-        l'usine (issue, revue, exécution) et au plus tard toutes les heures.
+        workflow <span class="mono">factory-cockpit.yml</span>. La page lit cet
+        instantané par défaut. Pour obtenir des données fraîches sans attendre le
+        workflow, collez un <strong>jeton GitHub en lecture seule</strong> ci-dessous
+        et chargez en direct : il reste dans ce navigateur
+        (<span class="mono">localStorage</span>) et n'est envoyé qu'à
+        <span class="mono">api.github.com</span>.
       </p>
       <div class="controls">
-        <button id="reload" type="button">Recharger la page</button>
+        <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Jeton GitHub (read-only) — optionnel">
+        <button id="load-live" type="button">Charger en direct</button>
+        <button id="forget" type="button">Oublier le jeton</button>
+        <button id="reload" type="button">Recharger l'instantané</button>
       </div>
     </div>
   </section>
@@ -200,6 +205,7 @@
 
   var FS = window.FactoryState;
   var DEFAULT_REPO = { owner: 'TanguyBaudrin', name: 'home-assistant-config' };
+  var TOKEN_KEY = 'factory-cockpit-token';
   var STATUS_LABELS = {
     'a-corriger': 'à corriger',
     'en-revue': 'en revue',
@@ -389,7 +395,68 @@
     window.location.reload();
   }
 
+  function makeRequest(token) {
+    return function (endpoint) {
+      return fetch('https://api.github.com' + endpoint, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          Authorization: 'Bearer ' + token
+        }
+      }).then(function (res) {
+        if (!res.ok) throw new Error(endpoint + ' -> ' + res.status + ' ' + res.statusText);
+        return res.json();
+      });
+    };
+  }
+
+  function decodeBase64(text) {
+    var binary = atob(String(text).replace(/\n/g, ''));
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function loadLive() {
+    var token = el('token').value.trim();
+    if (!token) { notice("Collez un jeton GitHub en lecture seule.", true); return; }
+    var button = el('load-live');
+    button.disabled = true;
+    notice('Chargement en direct depuis GitHub...');
+    var request = makeRequest(token);
+    var repo = DEFAULT_REPO;
+    var branch = 'main';
+    fetch('data.json', { cache: 'no-store' }).then(function (res) { return res.ok ? res.json() : null; })
+      .catch(function () { return null; })
+      .then(function (snapshot) {
+        if (snapshot && snapshot.repo) { repo = { owner: snapshot.repo.owner, name: snapshot.repo.name }; }
+        if (snapshot && snapshot.default_branch) branch = snapshot.default_branch;
+        return request('/repos/' + repo.owner + '/' + repo.name + '/contents/factory/queue.yaml?ref=' + branch)
+          .then(function (contents) { return decodeBase64(contents.content); });
+      })
+      .then(function (queueText) {
+        return FS.collect(request, { owner: repo.owner, repo: repo.name, queueText: queueText, branch: branch });
+      })
+      .then(function (state) {
+        localStorage.setItem(TOKEN_KEY, token);
+        render(state);
+        notice('Données chargées en direct à ' + new Date().toLocaleTimeString('fr-FR') + '.');
+      })
+      .catch(function (error) {
+        notice("Chargement en direct impossible : " + error.message + ". Vérifiez les permissions (Issues/PR/Contents/Actions: Read) et que le dépôt est dans le périmètre.", true);
+      })
+      .then(function () { button.disabled = false; });
+  }
+
   function init() {
+    var stored = localStorage.getItem(TOKEN_KEY);
+    if (stored) el('token').value = stored;
+    el('load-live').addEventListener('click', loadLive);
+    el('forget').addEventListener('click', function () {
+      localStorage.removeItem(TOKEN_KEY);
+      el('token').value = '';
+      notice('Jeton oublié.');
+    });
     el('reload').addEventListener('click', reload);
     loadSnapshot();
   }
