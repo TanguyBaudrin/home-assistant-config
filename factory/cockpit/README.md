@@ -1,56 +1,50 @@
 # Cockpit de l'usine logicielle
 
-Vue en lecture seule de l'usine d'agents décrite dans
-[`docs/reference/tooling.md`](../../docs/reference/tooling.md) : avancement de la
-file de migration, pull requests ouvertes et leur état (revue, corrections,
-escalades), issues en attente, et dernières exécutions des workflows
-`factory-*`.
+Vue en lecture seule de l'usine d'agents : avancement de la file de migration,
+pull requests ouvertes et leur état (revue, corrections, escalades), issues en
+attente, et dernières exécutions des workflows `factory-*`.
 
 ```
 factory/cockpit/
 ├── index.html              # la page, autonome (aucune ressource externe)
 ├── factory-state.js        # logique partagée : collecte + classement (UMD)
-├── collect.cjs             # écrit data.json depuis l'API GitHub
+├── collect.cjs             # écrit data.json depuis l'API GitHub (côté workflow)
 ├── factory-state.test.cjs  # tests unitaires de factory-state.js
-├── data.json               # instantané généré, NON versionné (voir .gitignore)
+├── data.json               # instantané généré, NON versionné
 └── README.md
 ```
 
 ## Comment les données arrivent
 
-1. `collect.cjs` interroge l'API GitHub (`issues`, `pulls`, `actions/runs`) et
-   lit `factory/queue.yaml`, puis écrit `data.json`.
-2. La page lit `data.json` et affiche l'état. **Aucun jeton n'est nécessaire
-   pour consulter l'instantané.**
+1. `.github/workflows/factory-cockpit.yml` lance `collect.cjs` avec
+   `GITHUB_TOKEN` (fourni par GitHub Actions). Il lit `issues`, `pulls`,
+   `actions/runs` et `factory/queue.yaml`, et écrit `factory/cockpit/data.json`.
+2. Le workflow publie ensuite `index.html`, `factory-state.js` et `data.json`
+   sur **GitHub Pages**.
 
-Le dépôt est privé : l'API exige une authentification même en lecture, donc la
-collecte se fait côté serveur, dans le workflow, avec le `GITHUB_TOKEN` fourni
-par GitHub Actions. La page publiée ne contient donc aucun secret.
+**Aucun jeton n'est demandé à la personne qui consulte la page.** La page ne fait
+que lire l'instantané.
 
-## Rafraîchissement en direct (optionnel)
+## Fréquence de mise à jour
 
-Le dépôt étant privé, l'instantané publié a l'âge de la dernière exécution du
-workflow. Pour forcer une lecture fraîche, la page accepte un **jeton GitHub en
-lecture seule** :
-
-- il reste dans le navigateur (`localStorage`, clé `factory-cockpit-token`) ;
-- il n'est envoyé qu'à `https://api.github.com` ;
-- « Oublier le jeton » le supprime.
-
-Un jeton *fine-grained* limité à ce dépôt avec le seul accès `Contents: Read` et
-`Pull requests: Read` suffit (`issues: read` et `actions: read` pour les issues
-et les exécutions).
+Le snapshot est régénéré :
+- toutes les heures (planifié) ;
+- à chaque activité sur les issues ou PRs (ouverture, clôture, renommage,
+  ajout/retrait d'étiquette) ;
+- quand un workflow `factory-*` se termine ;
+- à chaque push sur `main` touchant le cockpit ou `factory/queue.yaml` ;
+- à la demande (`workflow_dispatch`).
 
 ## En local
 
-Les navigateurs bloquent `fetch('data.json')` en `file://`. Pour visualiser la
-page en local, servez le dossier :
+Les navigateurs bloquent `fetch('data.json')` en `file://`. Pour visualiser en
+local :
 
 ```bash
 GITHUB_TOKEN="$(gh auth token)" GITHUB_REPOSITORY="TanguyBaudrin/home-assistant-config" \
   node factory/cockpit/collect.cjs factory/cockpit/data.json
 python3 -m http.server -d factory/cockpit 8080
-# puis http://localhost:8080/
+# http://localhost:8080/
 ```
 
 Tests :
@@ -59,19 +53,26 @@ Tests :
 node factory/cockpit/factory-state.test.cjs   # inclus dans `mise run factory-tests`
 ```
 
-## Publication (GitHub Pages)
+## Publication
 
-Le workflow [`.github/workflows/factory-cockpit.yml`](../../.github/workflows/factory-cockpit.yml)
-collecte l'instantané puis publie `index.html`, `factory-state.js` et
-`data.json` sur GitHub Pages. Il tourne toutes les 3 heures, à chaque
-modification de `factory/queue.yaml` ou du cockpit, et à la demande
-(`workflow_dispatch`).
+Le dépôt est **public** : GitHub Pages y est gratuit. Le workflow publie sur
+l'environnement `github-pages`. Les Pages doivent être activées une fois dans
+*Settings → Pages* avec **Source : GitHub Actions** ; sans cela, le job
+`deploy` échoue et la page reste utilisable en local.
 
-**Prérequis, une seule fois** : dans *Settings → Pages*, régler **Source** sur
-**GitHub Actions**. Les Pages d'un dépôt privé nécessitent un plan payant
-(Pro/Team/Enterprise Cloud) ; sans cela, le job `deploy` échoue — la page reste
-utilisable en local comme ci-dessus.
+Le site ne contient aucune donnée sensible au-delà des numéros, titres,
+branches et états de l'usine ; il est en lecture seule.
 
-Le site publié ne contient aucune donnée sensible (uniquement des numéros,
-titres, branches et états, servis à qui connaît l'URL). Il ne peut rien modifier :
-toutes les requêtes sont en lecture.
+## Développement local / Jeton PAT
+
+Si tu veux collecter en local hors contexte GitHub Actions, un **fine-grained**
+PAT suffit. Permissions requises sur ce dépôt :
+
+- **Issues** → Read
+- **Pull requests** → Read
+- **Contents** → Read (pour lire `factory/queue.yaml`)
+- **Actions** → Read (pour lister les exécutions `factory-*`)
+
+Classic token : `repo` suffit. Si tu obtenais un 404 avec un fine-grained, c'est
+généralement qu'il manque `Contents: Read` ou que le dépôt n'est pas sélectionné
+dans le périmètre du jeton.

@@ -1,10 +1,8 @@
 # Cockpit de l'usine : collecte l'etat courant et le publie sur GitHub Pages.
 #
 # L'instantane (data.json) est ecrit par factory/cockpit/collect.cjs avec le
-# GITHUB_TOKEN du workflow, car le depot est prive : l'API GitHub exige une
-# authentification meme pour lire. La page publiee ne contient donc aucun
-# secret ; elle peut en plus rafraichir en direct si le visiteur fournit un
-# jeton en lecture seule, mais l'instantané suffit a la consulter.
+# GITHUB_TOKEN du workflow : il lit l'API GitHub cote serveur et n'ecrit qu'un
+# fichier statique. La page publiee ne contient aucun secret.
 #
 # La logique de collecte et de classement vit dans factory/cockpit/factory-state.js,
 # testee par factory/cockpit/factory-state.test.cjs et par `mise run factory-tests`.
@@ -12,8 +10,22 @@ name: Factory Cockpit
 
 on:
   schedule:
-    # Toutes les 3 heures, a la minute 41 : un instantane frais sans saturer l'API.
-    - cron: '41 */3 * * *'
+    # Toutes les heures, a la minute 41 : rafraichissement de secours.
+    - cron: '41 * * * *'
+  issues:
+    types: [opened, closed, reopened, labeled, unlabeled, edited]
+  pull_request:
+    types: [opened, closed, reopened, labeled, unlabeled, edited, synchronize]
+  workflow_run:
+    # Rafraichir a la fin des workflows de l'usine (revues, corrections, migration...)
+    workflows:
+      - Factory Build
+      - Factory Review
+      - Factory Fix
+      - Factory Migrate
+      - Factory Spec
+      - Factory Docs
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -24,9 +36,16 @@ on:
 
 # `contents: read` est obligatoire : un bloc `permissions:` remplace tous les
 # droits, il ne les ajoute pas. Sans lui, `actions/checkout` se fait refuser par
-# GitHub avec un trompeur « Repository not found » sur un depot prive.
+# GitHub avec un trompeur « Repository not found ».
+#
+# `issues`, `pull-requests` et `actions` en lecture : `collect.cjs` lit l'API
+# GitHub pour compter les issues, les pull requests et les executions des
+# workflows. Un jeton limite a `contents: read` les refuse par un 403.
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
+  actions: read
   pages: write
   id-token: write
 
@@ -37,6 +56,7 @@ concurrency:
 jobs:
   build:
     name: Collecter l'etat
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
