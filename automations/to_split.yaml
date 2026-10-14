@@ -293,53 +293,6 @@
   mode: single
 
 
-- id: '1739261458706'
-  alias: Interrupteur - Bureau - Prise bureau Agnès - Utilisation interupteur boulanger
-  description: ''
-  triggers:
-  - trigger: event
-    event_type: zha_event
-    event_data:
-      device_ieee: 70:ac:08:ff:fe:96:43:3f
-      command: 'on'
-    id: 'on'
-  - trigger: event
-    event_type: zha_event
-    event_data:
-      device_ieee: 70:ac:08:ff:fe:96:43:3f
-      command: 'off'
-    id: 'off'
-  - trigger: event
-    event_type: zha_event
-    event_data:
-      device_ieee: 70:ac:08:ff:fe:96:43:3f
-      command: step_color_temp
-    id: double tap
-  conditions: []
-  actions:
-  - if:
-    - condition: trigger
-      id:
-      - 'on'
-      - 'off'
-    then:
-    - action: switch.toggle
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.prise_bureau_agnes_commutateur
-    else:
-    - if:
-      - condition: trigger
-        id:
-        - double tap
-      then:
-      - type: toggle
-        device_id: 030941ec32ca4ecfcb0d34501409a485
-        entity_id: c1d98a595baa62986eccfb711de11cc6
-        domain: light
-  mode: single
 - id: '1739543565644'
   alias: Auto - Maison - Event - Activation du coucher de la maison
   description: ''
