@@ -200,3 +200,52 @@
     - service: input_boolean.turn_off
       target:
         entity_id: input_boolean.prise_bureau_agnes_confirm_refused
+- id: 'auto_bureau_prise_agnes_interrupteur_boulanger'
+  alias: Bureau - Interrupteur boulanger - Piloter la prise et la lumière
+  description: |
+    Pilote la prise du bureau d'Agnès et la lumière associée depuis l'interrupteur
+    boulanger (ZHA).
+    - Appuis on/off : bascule la prise switch.prise_bureau_agnes_commutateur
+    - Double tap (step_color_temp) : bascule la lumière
+    (Migré le 2026-10-14)
+  trigger:
+    - event_type: zha_event
+      event_data:
+        device_ieee: 70:ac:08:ff:fe:96:43:3f
+        command: 'on'
+      id: 'on'
+    - event_type: zha_event
+      event_data:
+        device_ieee: 70:ac:08:ff:fe:96:43:3f
+        command: 'off'
+      id: 'off'
+    - event_type: zha_event
+      event_data:
+        device_ieee: 70:ac:08:ff:fe:96:43:3f
+        command: step_color_temp
+      id: double tap
+  condition: []
+  action:
+    - if:
+        - condition: trigger
+          id:
+            - 'on'
+            - 'off'
+      then:
+        - action: switch.toggle
+          metadata: {}
+          data: {}
+          target:
+            entity_id:
+              - switch.prise_bureau_agnes_commutateur
+      else:
+        - if:
+            - condition: trigger
+              id:
+                - double tap
+          then:
+            - type: toggle
+              device_id: 030941ec32ca4ecfcb0d34501409a485
+              entity_id: c1d98a595baa62986eccfb711de11cc6
+              domain: light
+  mode: single
