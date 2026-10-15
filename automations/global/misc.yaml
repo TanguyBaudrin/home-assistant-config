@@ -167,3 +167,33 @@
           - sensor.openuv_indice_uv_actuel
           - binary_sensor.openuv_fenetre_de_protection
   mode: single
+- id: 'auto_global_reboot_livebox_when_offline'
+  alias: 'Global - Internet - Reboot LiveBox quand indisponible'
+  description: |
+    Redémarre la LiveBox Fibre (button.livebox_fibre_livebox_restart) lorsque Free.fr et
+    Google.fr sont tous deux indisponibles pendant au moins 5 minutes, indiquant une
+    coupure internet. (Migré le 2026-10-15)
+  trigger:
+    - entity_id:
+        - binary_sensor.free_fr
+        - binary_sensor.google_fr
+      to: 'off'
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+      trigger: state
+  condition:
+    - condition: state
+      entity_id: binary_sensor.free_fr
+      state: 'off'
+    - condition: state
+      entity_id: binary_sensor.google_fr
+      state: 'off'
+  action:
+    - action: button.press
+      metadata: {}
+      data: {}
+      target:
+        entity_id: button.livebox_fibre_livebox_restart
+  mode: single

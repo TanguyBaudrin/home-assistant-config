@@ -265,34 +265,6 @@
         target:
           entity_id: input_select.interrupteur_vmc
   mode: single
-
-- id: '1743692081348'
-  alias: Reboot Live box quand Free.fr est indisponible
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.free_fr
-    - binary_sensor.google_fr
-    to: 'off'
-    for:
-      hours: 0
-      minutes: 5
-      seconds: 0
-  conditions:
-  - condition: state
-    entity_id: binary_sensor.free_fr
-    state: 'off'
-  - condition: state
-    entity_id: binary_sensor.google_fr
-    state: 'off'
-  actions:
-  - action: button.press
-    metadata: {}
-    data: {}
-    target:
-      entity_id: button.livebox_fibre_livebox_restart
-  mode: single
 - id: '1751186347505'
   alias: Global - Cast - Afficher la météo sur le nest hub
   description: ''
