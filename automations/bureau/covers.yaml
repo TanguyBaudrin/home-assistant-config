@@ -1,0 +1,15 @@
+- id: 'auto_bureau_volet_fermeture_coucher_maison'
+  alias: 'Bureau - Volets - Fermeture du volet lors du coucher de la maison'
+  description: |
+    Ferme automatiquement les volets du bureau lorsque l'événement « coucher de la maison »
+    est déclenché (au crépuscule ou à 22h).
+    (Migré le 2026-10-15)
+  mode: single
+  trigger:
+    - platform: event
+      event_type: coucher_maison
+  condition: []
+  action:
+    - service: cover.close_cover
+      target:
+        area_id: bureau
