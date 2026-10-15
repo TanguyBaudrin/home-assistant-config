@@ -292,38 +292,6 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1739546482324'
-  alias: Auto - Maison - Tempo - Notification couleur du lendemain
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.rte_tempo_prochaine_couleur
-    to: Bleu
-    id: bleu
-  - trigger: state
-    entity_id:
-    - sensor.rte_tempo_prochaine_couleur
-    to: Blanc
-    id: blanc
-  - trigger: state
-    entity_id:
-    - sensor.rte_tempo_prochaine_couleur
-    to: Rouge
-    id: rouge
-  conditions: []
-  actions:
-  - action: notify.mobile_app_iphone_pro_de_tanguy
-    metadata: {}
-    data:
-      message: 'Jour tempo pour demain: {{ trigger.id }}'
-      title: Jour tempo pour demain
-  - action: notify.mobile_app_iphone_de_agnes
-    metadata: {}
-    data:
-      message: 'Jour tempo pour demain: {{ trigger.id }}'
-      title: Jour tempo pour demain
-  mode: single
 - id: '1743692081348'
   alias: Reboot Live box quand Free.fr est indisponible
   description: ''

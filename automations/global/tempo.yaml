@@ -93,3 +93,40 @@
           target:
             entity_id: select.consommation_rte_tempo
   mode: single
+- id: 'auto_global_tempo_notification_couleur_demain'
+  alias: 'Tempo - Notification couleur du lendemain'
+  description: >
+    Envoie une notification push sur les téléphones d'Agnès et Tanguy lorsque la
+    couleur Tempo du lendemain est connue (Bleu, Blanc ou Rouge). Déclencheurs :
+    changement d'état de sensor.rte_tempo_prochaine_couleur vers Bleu, Blanc ou
+    Rouge. Actions : notification sur les deux iPhones avec la couleur prévue.
+    (Migré le 2026-10-15)
+  trigger:
+  - entity_id:
+    - sensor.rte_tempo_prochaine_couleur
+    to: Bleu
+    id: bleu
+    trigger: state
+  - entity_id:
+    - sensor.rte_tempo_prochaine_couleur
+    to: Blanc
+    id: blanc
+    trigger: state
+  - entity_id:
+    - sensor.rte_tempo_prochaine_couleur
+    to: Rouge
+    id: rouge
+    trigger: state
+  condition: []
+  action:
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    metadata: {}
+    data:
+      message: 'Jour tempo pour demain: {{ trigger.id }}'
+      title: Jour tempo pour demain
+  - action: notify.mobile_app_iphone_de_agnes
+    metadata: {}
+    data:
+      message: 'Jour tempo pour demain: {{ trigger.id }}'
+      title: Jour tempo pour demain
+  mode: single
