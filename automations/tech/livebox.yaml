@@ -6,8 +6,7 @@
     binary_sensor.google_fr vers 'off'. Action : appui sur le bouton de redémarrage.
     (Migré le 2026-10-16)
   trigger:
-    - platform: state
-      entity_id:
+    - entity_id:
         - binary_sensor.free_fr
         - binary_sensor.google_fr
       to: 'off'
@@ -15,6 +14,7 @@
         hours: 0
         minutes: 5
         seconds: 0
+      trigger: state
   condition:
     - condition: state
       entity_id: binary_sensor.free_fr
