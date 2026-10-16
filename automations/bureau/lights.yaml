@@ -1,0 +1,18 @@
+- id: 'auto_bureau_lumiere_etagere_bouton'
+  alias: Bureau - Lumière - Allumer/éteindre l'étagère avec le bouton
+  description: |
+    Allume ou éteint la lumière de l'étagère du bureau lorsqu'on double-appuie
+    sur le bouton distant ZHA.
+    (Migré le 2026-10-16)
+  mode: single
+  trigger:
+    - device_id: 73f4031281d1269179ce269ee4a8aee8
+      domain: zha
+      type: remote_button_double_press
+      subtype: turn_on
+  condition: []
+  action:
+    - type: toggle
+      device_id: f133da3711ae2bcd51cc42b0ab21ff04
+      entity_id: 69986ef4ec3fae541cffe7988876b54e
+      domain: light
