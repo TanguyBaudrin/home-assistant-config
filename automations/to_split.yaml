@@ -293,22 +293,6 @@
     target:
       entity_id: button.livebox_fibre_livebox_restart
   mode: single
-- id: '1744619112416'
-  alias: Switch - Bureau - Lumière étagère avec bouton
-  description: ''
-  triggers:
-  - device_id: 73f4031281d1269179ce269ee4a8aee8
-    domain: zha
-    type: remote_button_double_press
-    subtype: turn_on
-    trigger: device
-  conditions: []
-  actions:
-  - type: toggle
-    device_id: f133da3711ae2bcd51cc42b0ab21ff04
-    entity_id: 69986ef4ec3fae541cffe7988876b54e
-    domain: light
-  mode: single
 - id: '1751186347505'
   alias: Global - Cast - Afficher la météo sur le nest hub
   description: ''
