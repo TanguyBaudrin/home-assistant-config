@@ -1,0 +1,30 @@
+- id: 'auto_tech_livebox_reboot'
+  alias: Tech - Livebox - Redémarrer quand Free.fr est indisponible
+  description: |
+    Redémarre la Livebox Fibre lorsque Free.fr et Google.fr sont tous deux indisponibles
+    pendant 5 minutes. Déclencheur : changement d'état de binary_sensor.free_fr et
+    binary_sensor.google_fr vers 'off'. Action : appui sur le bouton de redémarrage.
+    (Migré le 2026-10-16)
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.free_fr
+        - binary_sensor.google_fr
+      to: 'off'
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  condition:
+    - condition: state
+      entity_id: binary_sensor.free_fr
+      state: 'off'
+    - condition: state
+      entity_id: binary_sensor.google_fr
+      state: 'off'
+  action:
+    - service: button.press
+      target:
+        entity_id: button.livebox_fibre_livebox_restart
+      data: {}
+  mode: single
