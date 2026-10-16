@@ -167,3 +167,33 @@
           - sensor.openuv_indice_uv_actuel
           - binary_sensor.openuv_fenetre_de_protection
   mode: single
+
+- id: 'auto_global_livebox_reboot'
+  alias: "Global - Box - Reboot de la Livebox quand Internet est indisponible"
+  description: |
+    Réinitialise la Livebox lorsque Free.fr et Google.fr sont tous deux
+    indisponibles pendant 5 minutes. (Migré le 2026-10-16)
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.free_fr
+        - binary_sensor.google_fr
+      to: 'off'
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  condition:
+    - condition: state
+      entity_id: binary_sensor.free_fr
+      state: 'off'
+    - condition: state
+      entity_id: binary_sensor.google_fr
+      state: 'off'
+  action:
+    - action: button.press
+      metadata: {}
+      data: {}
+      target:
+        entity_id: button.livebox_fibre_livebox_restart
+  mode: single
