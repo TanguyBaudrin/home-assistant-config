@@ -133,3 +133,37 @@
       event_data:
         trigger: '{{ trigger.id }}'
   mode: single
+
+- id: 'auto_global_meteo_mise_a_jour_des_capteurs_uv'
+  alias: Global - Météo - Mise à jour des capteurs UV
+  description: |
+    Met à jour les capteurs UV OpenUV toutes les 15 minutes pendant la journée,
+    avec un intervalle minimum de 40 minutes entre deux mises à jour pour éviter
+    les appels trop fréquents. Déclencheur : pattern horaire toutes les 15 min.
+    Conditions : entre le lever et le coucher du soleil (décalage 45 min).
+    Actions : actualise sensor.openuv_indice_uv_actuel et
+    binary_sensor.openuv_fenetre_de_protection. (Migré le 2026-10-16)
+  trigger:
+    - trigger: time_pattern
+      minutes: '15'
+  condition:
+    - condition: sun
+      after: sunrise
+      before: sunset
+      before_offset: +00:45:00
+    - condition: template
+      value_template: >-
+        {{ state_attr('automation.global_meteo_mise_a_jour_des_capteurs_uv',
+          'last_triggered') == None
+          or (
+            now() - state_attr('automation.global_meteo_mise_a_jour_des_capteurs_uv',
+              'last_triggered')
+          ) >= timedelta(hours=0, minutes=40) }}
+  action:
+    - action: homeassistant.update_entity
+      metadata: {}
+      data:
+        entity_id:
+          - sensor.openuv_indice_uv_actuel
+          - binary_sensor.openuv_fenetre_de_protection
+  mode: single
