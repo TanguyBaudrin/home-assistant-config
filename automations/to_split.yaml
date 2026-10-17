@@ -266,37 +266,6 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1751186347505'
-  alias: Global - Cast - Afficher la météo sur le nest hub
-  description: ''
-  triggers:
-  - trigger: time
-    at: 07:00:00
-    id: allumage
-  - trigger: time
-    at: 08:15:00
-    id: extinction
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - allumage
-      sequence:
-      - action: cast.show_lovelace_view
-        metadata: {}
-        data:
-          entity_id: media_player.sejour
-          dashboard_path: meteo-wasquehal
-          view_path: cast
-    default:
-    - action: media_player.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id: media_player.sejour
-  mode: single
 - id: '1753110473269'
   alias: Auto - Chambre des parents - Allumage prise chacon
   description: ''
