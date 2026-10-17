@@ -266,44 +266,6 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1753110473269'
-  alias: Auto - Chambre des parents - Allumage prise chacon
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - light.smart_plug_hue_lumiere
-    to: 'on'
-    id: allumé
-  - trigger: state
-    entity_id:
-    - light.smart_plug_hue_lumiere
-    to: 'off'
-    id: éteint
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - allumé
-      sequence:
-      - action: light.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: light.prise_chacon_2
-    - conditions:
-      - condition: trigger
-        id:
-        - éteint
-      sequence:
-      - action: light.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: light.prise_chacon_2
-  mode: single
 - id: '1753453905895'
   alias: Auto - garage - Allumer la lumière quand la porte s’ouvre
   description: ''

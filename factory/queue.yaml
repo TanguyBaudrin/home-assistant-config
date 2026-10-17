@@ -93,8 +93,8 @@ queue:
     status: done
     attempts: 1
   - id: '1753110473269'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1753453905895'
     status: pending
     attempts: 0

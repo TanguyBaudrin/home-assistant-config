@@ -1,0 +1,38 @@
+- id: 'auto_chambre_des_parents_prise_chacon_suit_lumiere'
+  alias: Chambre des parents - Lumières - Suivi de la prise Chacon par la lampe Hue
+  description: >-
+    Cette automatisation allume ou éteint la prise Chacon 2 (light.prise_chacon_2)
+    en fonction de l'état de la lampe Hue (light.smart_plug_hue_lumiere). Lorsque la
+    lampe s'allume, la prise s'allume aussi ; lorsqu'elle s'éteint, la prise s'éteint.
+    (Migré le 2026-10-17)
+  trigger:
+  - trigger: state
+    entity_id:
+    - light.smart_plug_hue_lumiere
+    to: 'on'
+    id: allumé
+  - trigger: state
+    entity_id:
+    - light.smart_plug_hue_lumiere
+    to: 'off'
+    id: éteint
+  condition: []
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - allumé
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.prise_chacon_2
+    - conditions:
+      - condition: trigger
+        id:
+        - éteint
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id: light.prise_chacon_2
+  mode: single
