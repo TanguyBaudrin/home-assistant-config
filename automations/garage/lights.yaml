@@ -49,3 +49,19 @@
         target:
           area_id: garage
   mode: single
+- id: 'auto_garage_lumiere_porte_ouverte'
+  alias: Garage - Lumières - Allumage quand la porte s'ouvre
+  description: >-
+    Cette automatisation allume la lumière du garage dès que la porte de garage
+    s'ouvre (le capteur binaire passe à on). (Migré le 2026-10-18)
+  trigger:
+  - trigger: state
+    entity_id:
+    - binary_sensor.porte_de_garage
+    to: 'on'
+  condition: []
+  action:
+  - action: light.turn_on
+    target:
+      area_id: garage
+  mode: single
