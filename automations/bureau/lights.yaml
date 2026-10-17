@@ -15,5 +15,5 @@
   action:
     - type: toggle
       device_id: f133da3711ae2bcd51cc42b0ab21ff04
-      entity_id: 69986ef4ec3fae541cffe7988876b54e
+      entity_id: light.wled_principal
       domain: light
