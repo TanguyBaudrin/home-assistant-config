@@ -345,26 +345,6 @@
       message: 'Humidité dans la chambre des parents trop importante '
       title: "\U0001F6A8 humidité dans la chambre"
   mode: single
-- id: '1764145635626'
-  alias: Auto - Garage - Couper la prise du PC si non utilisé
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.prise_pc_gaming_puissance
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    below: 1
-  conditions: []
-  actions:
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.prise_pc_gaming
-  mode: single
 - id: '1765203339880'
   alias: Auto - Garage - Eteindre l'imprimante 3D si non utilisée
   description: ''

@@ -22,3 +22,28 @@
     target:
       entity_id: switch.commutateur_porte_de_garage_commutateur
   mode: single
+- id: 'auto_garage_prise_pc_gaming_couper_si_non_utilise'
+  alias: Garage - Prise PC Gaming - Coupure automatique quand non utilisée
+  description: >-
+    Cette automatisation coupe la prise du PC gaming lorsque la puissance
+    descend en dessous de 1 W pendant 15 minutes, indiquant que l'ordinateur
+    n'est plus utilisé. Elle déclenche sur le capteur de puissance
+    `sensor.prise_pc_gaming_puissance` et agit sur `switch.prise_pc_gaming`.
+    (Migré le 2026-10-19)
+  trigger:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.prise_pc_gaming_puissance
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    below: 1
+  condition: []
+  action:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.prise_pc_gaming
+  mode: single
