@@ -1,0 +1,40 @@
+- id: energy_tempo_heures_creuses_switch
+  alias: "Energy - Tempo - Basculement heures creuses/heures pleines"
+  description: >
+    Allume ou éteint une prise électrique en fonction du passage en heures
+    creuses ou heures pleines du capteur Tempo RTE. Déclenchée par le
+    changement d'état de binary_sensor.rte_tempo_heures_creuses.
+    (Migré le 2026-10-18)
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.rte_tempo_heures_creuses
+      from: "on"
+      to: "off"
+      id: Heure pleine
+    - platform: state
+      entity_id: binary_sensor.rte_tempo_heures_creuses
+      from: "off"
+      to: "on"
+      id: Heure creuse
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Heure creuse
+          sequence:
+            - type: turn_on
+              device_id: 041ead59f357f0f8861a9a7a6debbf60
+              entity_id: a842979776e4c90f5bd8d4dfea6fb19e
+              domain: switch
+        - conditions:
+            - condition: trigger
+              id:
+                - Heure pleine
+          sequence:
+            - type: turn_off
+              device_id: 041ead59f357f0f8861a9a7a6debbf60
+              entity_id: a842979776e4c90f5bd8d4dfea6fb19e
+              domain: switch
+  mode: single
