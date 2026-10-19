@@ -341,17 +341,6 @@
       area_id: chambre_des_parents
     data: {}
   mode: single
-- id: '1766061694326'
-  alias: Nouvelle automatisation
-  description: ''
-  use_blueprint:
-    path: andrew-codechimp/battery_notes_battery_threshold.yaml
-    input:
-      on_low_actions:
-      - action: notify.mobile_app_iphone_pro_de_tanguy
-        metadata: {}
-        data:
-          message: Battery low on {{ trigger.event.data }}
 - id: '1766397966233'
   alias: Auto - Maison - Incrémentation compteurs journaliers
   description: ''
