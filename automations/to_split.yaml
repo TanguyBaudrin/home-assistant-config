@@ -324,26 +324,6 @@
     target:
       entity_id: switch.prise_pc_gaming
   mode: single
-- id: '1765203339880'
-  alias: Auto - Garage - Eteindre l'imprimante 3D si non utilisée
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.prusa_core_one
-    to:
-    - finished
-    for:
-      hours: 0
-      minutes: 20
-      seconds: 0
-  conditions: []
-  actions:
-  - type: turn_off
-    device_id: cc3d71cce80dccae6687e99689cea0ee
-    entity_id: ae47c95210cfd39253b20c3097e472a0
-    domain: switch
-  mode: single
 - id: '1765209144683'
   alias: Auto - Chambre des parents - Eteindre la lumière quand la lecture commence
   description: ''
