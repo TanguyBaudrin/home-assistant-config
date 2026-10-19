@@ -53,3 +53,18 @@
               data:
                 notification_id: "{{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id }}"
   mode: queued
+- id: 'auto_global_batterie_notification_seuil'
+  alias: Global - Batterie - Notification seuil de batterie faible
+  description: >
+    Envoie une notification sur l'iPhone de Tanguy lorsqu'un appareil dont la
+    batterie est suivie par Battery Notes atteint le seuil bas configuré.
+    Déclencheur : événement battery_notes_battery_threshold. Action :
+    notification push avec le nom de l'appareil. (Migré le 2026-10-20)
+  use_blueprint:
+    path: andrew-codechimp/battery_notes_battery_threshold.yaml
+    input:
+      on_low_actions:
+        - action: notify.mobile_app_iphone_pro_de_tanguy
+          metadata: {}
+          data:
+            message: Battery low on {{ trigger.event.data }}
