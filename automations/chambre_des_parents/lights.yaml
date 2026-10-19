@@ -36,3 +36,23 @@
         target:
           entity_id: light.prise_chacon_2
   mode: single
+- id: 'auto_chambre_des_parents_media_lecture_allumee_eteindre_lumieres'
+  alias: Chambre des parents - Lumières - Extinction quand la lecture démarre
+  description: >-
+    Cette automatisation éteint les lumières de la chambre des parents lorsque
+    le lecteur multimédia (Apple TV) commence la lecture d'un film ou d'une vidéo.
+    (Migré le 2026-10-19)
+  trigger:
+  - device_id: 0c6e33392863002b69d35e179d5c58fd
+    domain: media_player
+    entity_id: 46ea9972bcca234e8c7eae93d3f42b1e
+    type: playing
+    trigger: device
+  condition: []
+  action:
+  - action: light.turn_off
+    metadata: {}
+    target:
+      area_id: chambre_des_parents
+    data: {}
+  mode: single
