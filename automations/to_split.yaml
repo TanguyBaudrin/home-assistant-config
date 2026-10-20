@@ -266,22 +266,6 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1753453905895'
-  alias: Auto - garage - Allumer la lumière quand la porte s’ouvre
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.porte_de_garage
-    to: 'on'
-  conditions: []
-  actions:
-  - action: light.turn_on
-    metadata: {}
-    data: {}
-    target:
-      area_id: garage
-  mode: single
 - id: '1754039557225'
   alias: Auto - Maison - Changement heure creuses/heures pleines
   description: ''
@@ -320,31 +304,6 @@
         entity_id: a842979776e4c90f5bd8d4dfea6fb19e
         domain: switch
   mode: single
-- id: '1759576739845'
-  alias: Chambre des parents - alerte - Humidité trop importante
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite
-    for:
-      hours: 0
-      minutes: 20
-      seconds: 0
-    above: 60
-  conditions: []
-  actions:
-  - action: notify.mobile_app_iphone_de_agnes
-    metadata: {}
-    data:
-      message: 'Humidité dans la chambre des parents trop importante '
-      title: "\U0001F6A8 humidité dans la chambre"
-  - action: notify.mobile_app_iphone_pro_de_tanguy
-    metadata: {}
-    data:
-      message: 'Humidité dans la chambre des parents trop importante '
-      title: "\U0001F6A8 humidité dans la chambre"
-  mode: single
 - id: '1764145635626'
   alias: Auto - Garage - Couper la prise du PC si non utilisé
   description: ''
@@ -364,26 +323,6 @@
     data: {}
     target:
       entity_id: switch.prise_pc_gaming
-  mode: single
-- id: '1765203339880'
-  alias: Auto - Garage - Eteindre l'imprimante 3D si non utilisée
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.prusa_core_one
-    to:
-    - finished
-    for:
-      hours: 0
-      minutes: 20
-      seconds: 0
-  conditions: []
-  actions:
-  - type: turn_off
-    device_id: cc3d71cce80dccae6687e99689cea0ee
-    entity_id: ae47c95210cfd39253b20c3097e472a0
-    domain: switch
   mode: single
 - id: '1765209144683'
   alias: Auto - Chambre des parents - Eteindre la lumière quand la lecture commence

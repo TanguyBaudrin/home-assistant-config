@@ -96,20 +96,20 @@ queue:
     status: done
     attempts: 1
   - id: '1753453905895'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1754039557225'
     status: pending
     attempts: 0
   - id: '1759576739845'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1764145635626'
     status: pending
     attempts: 0
   - id: '1765203339880'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1765209144683'
     status: pending
     attempts: 0
