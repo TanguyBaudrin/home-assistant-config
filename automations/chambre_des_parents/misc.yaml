@@ -320,3 +320,29 @@
     controller_id: '{{controller_device}}'
   mode: restart
   max_exceeded: silent
+- id: 'auto_chambre_des_parents_alerte_humidite'
+  alias: Chambre des parents - Humidité - Alerte quand l'humidité est trop importante
+  description: >-
+    Cette automatisation envoie une notification sur les téléphones d'Agnès et
+    Tanguy lorsque le taux d'humidité de la chambre des parents dépasse 60 %
+    pendant 20 minutes. (Migré le 2026-10-18)
+  trigger:
+  - entity_id:
+    - sensor.ewelink_snzb_02p_humidite
+    for:
+      hours: 0
+      minutes: 20
+      seconds: 0
+    above: 60
+    trigger: numeric_state
+  condition: []
+  action:
+  - action: notify.mobile_app_iphone_de_agnes
+    data:
+      message: 'Humidité dans la chambre des parents trop importante '
+      title: "\U0001F6A8 humidité dans la chambre"
+  - action: notify.mobile_app_iphone_pro_de_tanguy
+    data:
+      message: 'Humidité dans la chambre des parents trop importante '
+      title: "\U0001F6A8 humidité dans la chambre"
+  mode: single

@@ -22,3 +22,26 @@
     target:
       entity_id: switch.commutateur_porte_de_garage_commutateur
   mode: single
+- id: 'auto_garage_imprimante_3d_extinction'
+  alias: Garage - Imprimante 3D - Éteindre l'imprimante si non utilisée
+  description: >-
+    Cette automatisation éteint l'imprimante 3D Prusa Core One lorsque le statut
+    passe à "finished" et reste dans cet état pendant 20 minutes, indiquant que
+    l'impression est terminée et que l'imprimante n'est plus utilisée.
+    (Migré le 2026-10-19)
+  trigger:
+  - trigger: state
+    entity_id:
+    - sensor.prusa_core_one
+    to: finished
+    for:
+      hours: 0
+      minutes: 20
+      seconds: 0
+  condition: []
+  action:
+  - type: turn_off
+    device_id: cc3d71cce80dccae6687e99689cea0ee
+    entity_id: ae47c95210cfd39253b20c3097e472a0
+    domain: switch
+  mode: single

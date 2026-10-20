@@ -304,31 +304,6 @@
         entity_id: a842979776e4c90f5bd8d4dfea6fb19e
         domain: switch
   mode: single
-- id: '1759576739845'
-  alias: Chambre des parents - alerte - Humidité trop importante
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ewelink_snzb_02p_humidite
-    for:
-      hours: 0
-      minutes: 20
-      seconds: 0
-    above: 60
-  conditions: []
-  actions:
-  - action: notify.mobile_app_iphone_de_agnes
-    metadata: {}
-    data:
-      message: 'Humidité dans la chambre des parents trop importante '
-      title: "\U0001F6A8 humidité dans la chambre"
-  - action: notify.mobile_app_iphone_pro_de_tanguy
-    metadata: {}
-    data:
-      message: 'Humidité dans la chambre des parents trop importante '
-      title: "\U0001F6A8 humidité dans la chambre"
-  mode: single
 - id: '1764145635626'
   alias: Auto - Garage - Couper la prise du PC si non utilisé
   description: ''
@@ -349,26 +324,6 @@
     target:
       entity_id: switch.prise_pc_gaming
   mode: single
-- id: '1765203339880'
-  alias: Auto - Garage - Eteindre l'imprimante 3D si non utilisée
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.prusa_core_one
-    to:
-    - finished
-    for:
-      hours: 0
-      minutes: 20
-      seconds: 0
-  conditions: []
-  actions:
-  - type: turn_off
-    device_id: cc3d71cce80dccae6687e99689cea0ee
-    entity_id: ae47c95210cfd39253b20c3097e472a0
-    domain: switch
-  mode: single
 - id: '1765209144683'
   alias: Auto - Chambre des parents - Eteindre la lumière quand la lecture commence
   description: ''
@@ -386,17 +341,6 @@
       area_id: chambre_des_parents
     data: {}
   mode: single
-- id: '1766061694326'
-  alias: Nouvelle automatisation
-  description: ''
-  use_blueprint:
-    path: andrew-codechimp/battery_notes_battery_threshold.yaml
-    input:
-      on_low_actions:
-      - action: notify.mobile_app_iphone_pro_de_tanguy
-        metadata: {}
-        data:
-          message: Battery low on {{ trigger.event.data }}
 - id: '1766397966233'
   alias: Auto - Maison - Incrémentation compteurs journaliers
   description: ''
