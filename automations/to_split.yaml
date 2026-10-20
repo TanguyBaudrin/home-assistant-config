@@ -266,22 +266,6 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1753453905895'
-  alias: Auto - garage - Allumer la lumière quand la porte s’ouvre
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.porte_de_garage
-    to: 'on'
-  conditions: []
-  actions:
-  - action: light.turn_on
-    metadata: {}
-    data: {}
-    target:
-      area_id: garage
-  mode: single
 - id: '1754039557225'
   alias: Auto - Maison - Changement heure creuses/heures pleines
   description: ''
