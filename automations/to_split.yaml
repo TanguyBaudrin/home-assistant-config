@@ -341,28 +341,6 @@
       area_id: chambre_des_parents
     data: {}
   mode: single
-- id: '1766397966233'
-  alias: Auto - Maison - Incrémentation compteurs journaliers
-  description: ''
-  triggers:
-  - trigger: time
-    at: 01:00:00
-    weekday:
-    - mon
-    - tue
-    - wed
-    - thu
-    - fri
-    - sat
-    - sun
-  conditions: []
-  actions:
-  - action: counter.increment
-    metadata: {}
-    target:
-      entity_id: counter.jours_sans_aeration
-    data: {}
-  mode: single
 - id: '1766398158749'
   alias: Auto - Chambre des parents - Réinitialisation compteur jours aération
   description: ''
