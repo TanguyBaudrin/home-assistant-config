@@ -304,26 +304,6 @@
         entity_id: a842979776e4c90f5bd8d4dfea6fb19e
         domain: switch
   mode: single
-- id: '1764145635626'
-  alias: Auto - Garage - Couper la prise du PC si non utilisé
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.prise_pc_gaming_puissance
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    below: 1
-  conditions: []
-  actions:
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.prise_pc_gaming
-  mode: single
 - id: '1765209144683'
   alias: Auto - Chambre des parents - Eteindre la lumière quand la lecture commence
   description: ''
