@@ -266,44 +266,6 @@
           entity_id: input_select.interrupteur_vmc
   mode: single
 
-- id: '1754039557225'
-  alias: Auto - Maison - Changement heure creuses/heures pleines
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.rte_tempo_heures_creuses
-    from: 'on'
-    to: 'off'
-    id: Heure pleine
-  - trigger: state
-    entity_id:
-    - binary_sensor.rte_tempo_heures_creuses
-    from: 'off'
-    to: 'on'
-    id: Heure creuse
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Heure creuse
-      sequence:
-      - type: turn_on
-        device_id: 041ead59f357f0f8861a9a7a6debbf60
-        entity_id: a842979776e4c90f5bd8d4dfea6fb19e
-        domain: switch
-    - conditions:
-      - condition: trigger
-        id:
-        - Heure pleine
-      sequence:
-      - type: turn_off
-        device_id: 041ead59f357f0f8861a9a7a6debbf60
-        entity_id: a842979776e4c90f5bd8d4dfea6fb19e
-        domain: switch
-  mode: single
 - id: '1764145635626'
   alias: Auto - Garage - Couper la prise du PC si non utilisé
   description: ''
