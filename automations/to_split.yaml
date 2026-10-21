@@ -265,27 +265,6 @@
         target:
           entity_id: input_select.interrupteur_vmc
   mode: single
-
-- id: '1764145635626'
-  alias: Auto - Garage - Couper la prise du PC si non utilisé
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.prise_pc_gaming_puissance
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    below: 1
-  conditions: []
-  actions:
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.prise_pc_gaming
-  mode: single
 - id: '1766397966233'
   alias: Auto - Maison - Incrémentation compteurs journaliers
   description: ''

@@ -45,3 +45,27 @@
     entity_id: ae47c95210cfd39253b20c3097e472a0
     domain: switch
   mode: single
+- id: 'auto_garage_prise_pc_extinction'
+  alias: Garage - Prise PC - Éteindre la prise quand le PC est inactif
+  description: >-
+    Cette automatisation coupe l'alimentation de la prise du PC gaming lorsque
+    la puissance consommée reste inférieure à 1 watt pendant 15 minutes,
+    indiquant que le PC est éteint ou inactif.
+    (Migré le 2026-10-22)
+  trigger:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.prise_pc_gaming_puissance
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    below: 1
+  condition: []
+  action:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.prise_pc_gaming
+  mode: single
