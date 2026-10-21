@@ -1,0 +1,45 @@
+- id: 'auto_energy_tempo_heures_creuses'
+  alias: 'Energy - Tempo - Basculement automatique prise heures creuses/pleines'
+  description: >
+    Bascule automatiquement l'état d'une prise en fonction des heures creuses
+    et pleines du tarif Tempo. Déclencheurs : changement d'état de
+    binary_sensor.rte_tempo_heures_creuses. Actions : allumage de la prise
+    lors du passage en heures creuses, extinction lors du passage en heures
+    pleines. (Migré le 2026-10-21)
+  trigger:
+    - id: Heure creuse
+      trigger: state
+      entity_id:
+        - binary_sensor.rte_tempo_heures_creuses
+      from: 'off'
+      to: 'on'
+    - id: Heure pleine
+      trigger: state
+      entity_id:
+        - binary_sensor.rte_tempo_heures_creuses
+      from: 'on'
+      to: 'off'
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id:
+                - Heure creuse
+          sequence:
+            - action: switch.turn_on
+              metadata: {}
+              target:
+                device_id: 041ead59f357f0f8861a9a7a6debbf60
+                entity_id: a842979776e4c90f5bd8d4dfea6fb19e
+        - conditions:
+            - condition: trigger
+              id:
+                - Heure pleine
+          sequence:
+            - action: switch.turn_off
+              metadata: {}
+              target:
+                device_id: 041ead59f357f0f8861a9a7a6debbf60
+                entity_id: a842979776e4c90f5bd8d4dfea6fb19e
+  mode: single
