@@ -36,3 +36,21 @@
         target:
           entity_id: light.prise_chacon_2
   mode: single
+- id: 'auto_chambre_des_parents_lumiere_coupee_lecture_media'
+  alias: Chambre des parents - Lumières - Coupure des lumières au démarrage d'une lecture
+  description: >-
+    Éteint les lumières de la chambre des parents lorsqu'un média commence à être lu
+    sur le lecteur multimédia associé. (Migré le 2026-10-21)
+  trigger:
+  - device_id: 0c6e33392863002b69d35e179d5c58fd
+    domain: media_player
+    entity_id: 46ea9972bcca234e8c7eae93d3f42b1e
+    type: playing
+    trigger: device
+  condition: []
+  action:
+  - action: light.turn_off
+    target:
+      area_id: chambre_des_parents
+    data: {}
+  mode: single
