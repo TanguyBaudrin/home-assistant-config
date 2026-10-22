@@ -1,0 +1,23 @@
+- id: 'auto_global_compteurs_journaliers_increment'
+  alias: Maison - Compteur - Incrémenter les compteurs journaliers
+  description: |
+    Incrément le compteur jours sans aération chaque jour à 01:00.
+    Déclenchement quotidien à 1h du matin, tous les jours de la semaine.
+    (Migré le 2026-10-22)
+  trigger:
+    - platform: time
+      at: '01:00:00'
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+        - sat
+        - sun
+  condition: []
+  action:
+    - action: counter.increment
+      target:
+        entity_id: counter.jours_sans_aeration
+  mode: single
