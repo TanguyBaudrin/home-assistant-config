@@ -287,22 +287,6 @@
       entity_id: counter.jours_sans_aeration
     data: {}
   mode: single
-- id: '1766398158749'
-  alias: Auto - Chambre des parents - Réinitialisation compteur jours aération
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.changement_humidite_chambre_des_parents
-    below: -4
-  conditions: []
-  actions:
-  - action: counter.reset
-    metadata: {}
-    target:
-      entity_id: counter.jours_sans_aeration
-    data: {}
-  mode: single
 - id: '1766595380189'
   alias: Auto - Salon - Eteindre la lumière si on lance une vidéo sur Jellyfin
   description: |
