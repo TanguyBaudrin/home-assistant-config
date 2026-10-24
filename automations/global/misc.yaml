@@ -197,3 +197,28 @@
       target:
         entity_id: button.livebox_fibre_livebox_restart
   mode: single
+
+- id: 'auto_global_compteur_jours_sans_aeration_increment'
+  alias: "Global - Compteur - Incrémentation des jours sans aération"
+  description: |
+    Incrémente le compteur counter.jours_sans_aeration chaque jour à 1h00 du matin
+    (tous les jours de la semaine). Utilisé pour suivre le nombre de jours sans
+    aération de la maison. (Migré le 2026-10-22)
+  trigger:
+    - trigger: time
+      at: '01:00:00'
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+        - sat
+        - sun
+  condition: []
+  action:
+    - action: counter.increment
+      metadata: {}
+      target:
+        entity_id: counter.jours_sans_aeration
+  mode: single
