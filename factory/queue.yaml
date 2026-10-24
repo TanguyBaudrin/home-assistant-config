@@ -120,8 +120,8 @@ queue:
     status: done
     attempts: 1
   - id: '1766398158749'
-    status: pending
-    attempts: 0
+    status: done
+    attempts: 1
   - id: '1766595380189'
     status: done
     attempts: 1
