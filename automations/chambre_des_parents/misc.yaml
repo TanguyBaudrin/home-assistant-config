@@ -346,3 +346,22 @@
       message: 'Humidité dans la chambre des parents trop importante '
       title: "\U0001F6A8 humidité dans la chambre"
   mode: single
+- id: 'auto_chambre_des_parents_compteur_jours_aeration_reset'
+  alias: Chambre des parents - Aération - Réinitialisation du compteur jours sans aération
+  description: >-
+    Cette automatisation réinitialise le compteur de jours sans aération
+    (counter.jours_sans_aeration) lorsque la variation d'humidité de la chambre
+    des parents descend en dessous de -4 %, indiquant une aération récente.
+    (Migré le 2026-10-24)
+  trigger:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.changement_humidite_chambre_des_parents
+    below: -4
+  condition: []
+  action:
+  - action: counter.reset
+    target:
+      entity_id: counter.jours_sans_aeration
+    data: {}
+  mode: single
