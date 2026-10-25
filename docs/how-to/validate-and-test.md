@@ -37,7 +37,9 @@ mise run ha-entity-list -- prise_bureau
 
 **Environment setup:** copy [`mise.local.toml.example`](../../mise.local.toml.example) to `mise.local.toml` and add your `HASS_TOKEN`.
 
-> Note: `mise run ha-check` runs Docker with a TTY (`-it`). In a non-interactive shell, run the underlying Docker command without `-it` instead.
+> Note: `mise run ha-check` ne passe pas `-it` au conteneur Docker, car la
+> commande doit fonctionner aussi bien en interactif qu'en CI (où aucun TTY
+> n'est disponible).
 
 ## Traditional methods
 
