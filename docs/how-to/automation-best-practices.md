@@ -97,7 +97,7 @@ For confirmable actions (from `automations/bureau/prise_agnes.yaml`):
 - Organize automations by **room/functional area**, not by type.
 - Current structure: `bureau/`, `chambre_des_parents/`, `energy/`, `garage/`, `global/`, `grenier/`, `kitchen/`, `salon/`, `tech/`.
 - Each subdirectory contains related automations (e.g., `bureau/prise_agnes.yaml`, `bureau/prise_tanguy.yaml`).
-- **Legacy:** `automations/to_split.yaml` (1489 lines) still needs splitting into the appropriate directories.
+- **Legacy:** `automations/to_split.yaml` (267 lignes) a encore besoin d'être éclaté dans les répertoires appropriés.
 
 ## Related
 
