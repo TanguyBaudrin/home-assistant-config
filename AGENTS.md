@@ -15,7 +15,7 @@ See [docs/explanation/repository-overview.md](docs/explanation/repository-overvi
 ## 2. Must-Know Rules (Always)
 
 - **French naming** — entity IDs and user-facing text are in French. Entity IDs are strict `snake_case`; smart plugs are `prise_*_commutateur`, power sensors `sensor.prise_*_puissance`.
-- **Every automation has 5 fields** — `id`, `alias`, `description`, `trigger`, `condition` (empty `[]` if none), `action`, and ends with an explicit `mode:`.
+- **Every automation has 6 mandatory fields** — `id`, `alias`, `description`, `trigger` (ou `triggers`), `condition` (tableau vide `[]` si absent), `action` (ou `actions`), and ends with an explicit `mode:`.
 - **Secrets policy** — never hardcode tokens, keys, URLs, or passwords. Always use `!secret` referencing `secrets.yaml`.
 - **Validate after every edit** — run `mise run validate && mise run ha-check`.
 - **Verify entities exist** — use `mise run ha-entity-exists -- <entity_id>` before referencing an entity.
