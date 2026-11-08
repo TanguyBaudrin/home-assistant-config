@@ -19,7 +19,7 @@ When refactoring or splitting files, always:
 - [ ] Avoid including secrets or credentials in discussion, code, or PRs.
 - [ ] Verify all automation logic is reachable (triggers are configured correctly and all referenced entities exist).
 - [ ] Use French for all aliases, descriptions, and entity IDs.
-- [ ] Include all 5 required fields in automations (id, alias, description, trigger, action).
+- [ ] Include all 6 required fields in automations (id, alias, description, trigger/triggers, action/actions, condition).
 - [ ] Set `mode:` explicitly at the end of each automation.
 - [ ] Add entity availability checks in templates (`unavailable`, `unknown`).
 

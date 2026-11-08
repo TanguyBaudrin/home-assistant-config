@@ -11,7 +11,7 @@ In this tutorial, we will add an automation that turns the kitchen light on when
 
 Automations live in `automations/`, split by room. The kitchen automations are in `automations/kitchen/lights.yaml`, which already uses the motion-light pattern.
 
-Open that file and notice how each automation has the same shape: `id`, `alias`, `description`, `trigger`, `action`, and `mode`.
+Open that file and notice how each automation has the same shape: `id`, `alias`, `description`, `trigger` (or `triggers`), `condition`, `action` (or `actions`), and `mode`.
 
 The output should look something like:
 

@@ -80,16 +80,19 @@ state: >
 ### Variables in actions (from `automations/bureau/prise_agnes.yaml`)
 
 ```yaml
-action:
-  - variables:
-      current_power: >-
-        {% if power not in ['unknown', 'unavailable', None] %}
-          {{ power | float(999) }}
-        {% endif %}
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ current_power > 180 }}"
+            - variables:
+                action_yes: "{{ 'AGNES_CONFIRM_YES_' ~ context.id }}"
+                action_no: "{{ 'AGNES_CONFIRM_NO_' ~ context.id }}"
+            - service: notify.mobile_app_iphone_de_agnes
+              data:
+                title: "Extinction de la prise bureau ?"
+                message: "Consommation modérée (4-80W) depuis 60 minutes. Voulez-vous éteindre la prise ?"
+                data:
+                  actions:
+                    - action: "{{ action_yes }}"
+                      title: "Oui, éteindre"
+                    - action: "{{ action_no }}"
+                      title: "Non, garder allumée"
 ```
 
 ### Wait templates with timeout (from `automations/energy/tempo_rouge_power_on.yaml`)

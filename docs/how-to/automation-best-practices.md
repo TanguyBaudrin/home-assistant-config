@@ -2,7 +2,7 @@
 
 This guide describes how automations are written in this repository, from required fields to reusable patterns.
 
-## Required fields — always include all five
+## Required fields — always include all six plus mode
 
 Every automation MUST contain:
 
@@ -54,7 +54,7 @@ action:
 ## Blueprints vs. raw automations
 
 - **Use blueprints** when the pattern is used 2+ times (e.g., motion lights in multiple rooms).
-- Example from `automations/kitchen/lights.yaml`:
+- Example from `automations/garage/lights.yaml`:
 
   ```yaml
   - id: '1699796906579'
@@ -76,7 +76,7 @@ action:
 For confirmable actions (from `automations/bureau/prise_agnes.yaml`):
 
 ```yaml
-- service: notify.mobile_app_iphone_tanguy
+- service: notify.mobile_app_iphone_de_agnes
   data:
     message: "Question?"
     data:
