@@ -71,6 +71,8 @@ requests and **never merges anything**: a human merges, always.
 | `factory-build.yml` | label `to-implement` on an issue | self-hosted | Turns a validated plan into a pull request |
 | `factory-migrate.yml` | nightly 03:17 UTC | self-hosted | Migrates one legacy automation per night |
 | `factory-docs.yml` | weekly, Sunday 04:23 UTC | self-hosted | Documentation refresh, only if config changed |
+| `factory-cockpit.yml` | schedule, push, issues, PRs, workflow_run | ubuntu-latest | Collects factory state and publishes it on GitHub Pages |
+| `factory-labels.yml` | push on main | ubuntu-latest | Creates factory labels idempotently so agents never hit 422 |
 
 Agents are defined in `.opencode/agents/`, prompts in `.github/prompts/`, and
 the accepted-deviation policy in `factory/policy.md`.
