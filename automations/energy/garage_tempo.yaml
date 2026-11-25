@@ -132,7 +132,7 @@
                     - action: button.press
                       metadata: {}
                       target:
-                        entity_id: button.node_proxmox_pve_shutdown
+                        entity_id: button.node_pve_server_1_eteindre
                       data: {}
                     - wait_template: '{{ is_state("sensor.prise_serveur_dell_courant",
                         "0.0") }}'
